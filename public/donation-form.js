@@ -18,6 +18,7 @@
  *   data-terms-de   URL pagina T&C in tedesco     (default: /de/agb)
  *   data-terms-en   URL pagina T&C in inglese     (default: /en/agb)
  *   data-terms-it   URL pagina T&C in italiano    (default: /it/agb)
+ *   data-privacy-de/-en/-it  URL pagina Datenschutz (default: /de|en|it/datenschutz)
  *   Gli stessi attributi si possono mettere sul <div data-oa-donation-form>.
  *
  * STILE
@@ -50,6 +51,11 @@
       de: attr('data-terms-de') || '/de/agb',
       en: attr('data-terms-en') || '/en/agb',
       it: attr('data-terms-it') || '/it/agb'
+    },
+    privacy: {
+      de: attr('data-privacy-de') || '/de/datenschutz',
+      en: attr('data-privacy-en') || '/en/datenschutz',
+      it: attr('data-privacy-it') || '/it/datenschutz'
     },
     storageKey: 'oa_donation_draft'
   };
@@ -87,7 +93,9 @@
       tierUp: 'Con questa donazione passi al livello {tier} e hai diritto a tutti i suoi vantaggi.',
       tierDown: 'Con questo importo la donazione rientra nel livello {tier}.',
       tierEcho: 'Con questo importo la donazione diventa ECHO, un contributo a tua misura.',
-      newsletter: 'Desidero ricevere la newsletter di Orchestra Aurea.',
+      newsletterPrefix: 'Acconsento a ricevere la newsletter di Orchestra Aurea e dichiaro di aver letto l\'',
+      privacyLink: 'Informativa sulla Privacy',
+      newsletterSuffix: '.',
       saferpayInfo: 'I pagamenti sono elaborati in sicurezza da Saferpay (Worldline).',
       cardStorageInfo: 'L\'organizzazione non memorizza né processa i dettagli delle carte di pagamento.',
       noAdditionalCharges: 'Non verranno aggiunti costi aggiuntivi per i pagamenti con carta.',
@@ -121,7 +129,9 @@
       tierUp: 'With this donation you move up to the {tier} level and receive all of its benefits.',
       tierDown: 'With this amount your donation falls under the {tier} level.',
       tierEcho: 'With this amount your donation becomes ECHO, a contribution of your own choosing.',
-      newsletter: 'I would like to receive the Orchestra Aurea newsletter.',
+      newsletterPrefix: 'I agree to receive the Orchestra Aurea newsletter and I have read the ',
+      privacyLink: 'Privacy Policy',
+      newsletterSuffix: '.',
       saferpayInfo: 'Payments are securely processed by Saferpay (Worldline).',
       cardStorageInfo: 'The organization does not store or process payment card details.',
       noAdditionalCharges: 'No additional charges will be added for card payments.',
@@ -155,7 +165,9 @@
       tierUp: 'Mit diesem Betrag gelangen Sie in die Stufe {tier} und erhalten alle ihre Vorteile.',
       tierDown: 'Mit diesem Betrag gehört Ihre Spende zur Stufe {tier}.',
       tierEcho: 'Mit diesem Betrag wird Ihre Spende zu ECHO, einem Beitrag nach Ihrem Mass.',
-      newsletter: 'Ich möchte den Newsletter von Orchestra Aurea erhalten.',
+      newsletterPrefix: 'Ich bin mit dem Empfang des Newsletters von Orchestra Aurea einverstanden und habe die ',
+      privacyLink: 'Datenschutzerklärung',
+      newsletterSuffix: ' gelesen.',
       saferpayInfo: 'Zahlungen werden sicher von Saferpay (Worldline) verarbeitet.',
       cardStorageInfo: 'Die Organisation speichert oder verarbeitet keine Kartendaten.',
       noAdditionalCharges: 'Für Kartenzahlungen fallen keine zusätzlichen Gebühren an.',
@@ -272,7 +284,9 @@
     'letter-spacing:.05em;text-transform:uppercase;text-align:center;cursor:pointer;transition:all .4s ease}' +
     '.oa-root .oa-pay:hover:not(:disabled){background:var(--oa-paper);color:var(--oa-gold)}' +
     '.oa-root .oa-pay:disabled{opacity:.5;cursor:not-allowed}' +
-    '.oa-root :focus-visible{outline:2px solid var(--oa-ink);outline-offset:2px}' +
+    '.oa-root :focus-visible{outline:2px solid var(--oa-gold);outline-offset:2px}' +
+    // Campi di testo: niente contorno nero; al focus lo sfondo diventa sand e il bordo oro (2px).
+    '.oa-root .oa-input:focus,.oa-root .oa-input:focus-visible{outline:none;background:var(--oa-sand);border-color:var(--oa-gold);box-shadow:0 0 0 1px var(--oa-gold)}' +
     '.oa-root .oa-hidden{display:none!important}' +
     '@media (max-width:30rem){.oa-root .oa-presets{grid-template-columns:repeat(2,1fr)}.oa-root .oa-pay{padding:.875rem 1rem;letter-spacing:.03em}}';
 
@@ -300,7 +314,7 @@
           '</div>' +
           '<input class="oa-input" id="oa-email" name="email" type="email" autocomplete="email" required>' +
         '</div>' +
-        '<label class="oa-check"><input type="checkbox" id="oa-newsletter"><span id="oa-newsletter-label"></span></label>' +
+        '<label class="oa-check"><input type="checkbox" id="oa-newsletter"><span><span id="oa-newsletter-prefix"></span><a id="oa-privacy-link" href="#" target="_blank" rel="noopener noreferrer"></a><span id="oa-newsletter-suffix"></span></span></label>' +
       '</section>' +
       // 3. Testi Saferpay + termini + pagamento
       '<section class="oa-section">' +
@@ -329,7 +343,7 @@
       detailsTitle: $('oa-details-title'),
       firstName: $('oa-firstName'), lastName: $('oa-lastName'), address: $('oa-address'),
       postalCode: $('oa-postalCode'), city: $('oa-city'), email: $('oa-email'),
-      newsletter: $('oa-newsletter'), newsletterLabel: $('oa-newsletter-label'),
+      newsletter: $('oa-newsletter'), newsletterPrefix: $('oa-newsletter-prefix'), privacyLink: $('oa-privacy-link'), newsletterSuffix: $('oa-newsletter-suffix'),
       saferpay: $('oa-saferpay'), charges: $('oa-charges'),
       terms: $('oa-terms'), termsPrefix: $('oa-terms-prefix'), termsLink: $('oa-terms-link'),
       error: $('oa-error'), pay: $('oa-pay')
@@ -346,7 +360,10 @@
       el[k].setAttribute('placeholder', t[k]);
       el[k].setAttribute('aria-label', t[k]);
     });
-    el.newsletterLabel.textContent = t.newsletter;
+    el.newsletterPrefix.textContent = t.newsletterPrefix;
+    el.privacyLink.textContent = t.privacyLink;
+    el.privacyLink.setAttribute('href', CONFIG.privacy[lang]);
+    el.newsletterSuffix.textContent = t.newsletterSuffix;
     // Le due frasi su Saferpay restano nello stesso blocco, nello stesso ordine.
     el.saferpay.innerHTML = '';
     el.saferpay.appendChild(document.createTextNode(t.saferpayInfo));
@@ -576,11 +593,13 @@
     el.terms.addEventListener('change', function (e) { state.termsAccepted = e.target.checked; });
     el.form.addEventListener('submit', submit);
 
-    // Link T&C: salva la bozza e apre in una nuova scheda anche dove target="_blank" viene ignorato.
-    el.termsLink.addEventListener('click', function (e) {
-      saveDraft();
-      var w = window.open(el.termsLink.href, '_blank', 'noopener');
-      if (w) e.preventDefault();
+    // Link T&C e Datenschutz: salva la bozza e apre in una nuova scheda anche dove target="_blank" viene ignorato.
+    [el.termsLink, el.privacyLink].forEach(function (link) {
+      link.addEventListener('click', function (e) {
+        saveDraft();
+        var w = window.open(link.href, '_blank', 'noopener');
+        if (w) e.preventDefault();
+      });
     });
 
     start();
