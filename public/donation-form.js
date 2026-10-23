@@ -234,8 +234,8 @@
   // var() e' il fallback quando la pagina non e' su Webflow (anteprima locale).
   var CSS = '' +
     '.oa-root{--oa-ink:var(--color--ink,#1c1a17);--oa-gold:var(--color--gold-deep,#8a6a2a);' +
-    '--oa-sand:var(--color--sand,#ebddc1);--oa-paper:var(--color--paper,#fff);--oa-error:#8f2d1f;' +
-    'box-sizing:border-box;width:100%;max-width:36rem;margin:0 auto;color:var(--oa-ink);' +
+    '--oa-sand:var(--color--sand,#ebddc1);--oa-paper:var(--color--paper,#fff);--oa-bg:var(--color--paper-warm,#f9f5ec);--oa-error:#8f2d1f;' +
+    'box-sizing:border-box;width:100%;max-width:40rem;margin:0 auto;padding:clamp(1rem,4vw,2rem);border-radius:8px;background:var(--oa-bg);color:var(--oa-ink);' +
     'font-family:var(--font-family,"Switzer Variable",Helvetica,Arial,sans-serif);' +
     'font-size:var(--_typography---text-body--body-size,1rem);line-height:var(--_typography---line-height--lh-body,1.5)}' +
     '.oa-root *{box-sizing:border-box}' +
@@ -248,7 +248,7 @@
     '.oa-root .oa-preset{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.125rem;min-height:4.25rem;' +
     'border:1px solid var(--oa-gold);border-radius:8px;background:var(--oa-paper);color:var(--oa-gold);cursor:pointer;' +
     'font:inherit;font-size:1.125rem;font-weight:500;transition:all .4s ease}' +
-    '.oa-root .oa-preset span:first-child{font-size:.75rem;font-weight:400;letter-spacing:.05em}' +
+    '.oa-root .oa-preset span:first-child{font-size:1rem;font-weight:400;letter-spacing:.05em}' +
     '.oa-root .oa-preset:hover{background:var(--oa-sand);background:color-mix(in srgb,var(--oa-sand) 60%,var(--oa-paper))}' +
     '.oa-root .oa-preset.oa-selected{background:var(--oa-gold);color:var(--oa-paper)}' +
     '.oa-root .oa-input{display:block;width:100%;height:auto;margin:0;padding:.75rem 1rem;border:1px solid var(--oa-gold);border-radius:8px;' +
@@ -257,17 +257,18 @@
     '.oa-root .oa-amount-input{font-weight:500}' +
     '.oa-root .oa-fields{display:grid;gap:.75rem}' +
     '.oa-root .oa-row{display:grid;grid-template-columns:1fr 2fr;gap:.75rem}' +
-    '.oa-root .oa-note{margin:.75rem 0 0;font-size:var(--_typography---text-fixed-size--text-small,.875rem);line-height:var(--_typography---line-height--lh-small,1.4)}' +
-    '.oa-root .oa-tier-change{font-weight:500;color:var(--oa-gold)}' +
-    '.oa-root .oa-check{display:flex;align-items:flex-start;gap:.75rem;margin:1rem 0 0;font-size:var(--_typography---text-fixed-size--text-small,.875rem);' +
-    'line-height:var(--_typography---line-height--lh-small,1.4);cursor:pointer}' +
-    '.oa-root .oa-check input{flex:none;width:1.25rem;height:1.25rem;margin:.05rem 0 0;accent-color:var(--oa-gold)}' +
+    '.oa-root .oa-note{margin:.75rem 0 0;color:var(--oa-ink);font-size:1rem;line-height:1.5}' +
+    // Avviso di cambio livello: riquadro ben visibile (pubblico over 50)
+    '.oa-root .oa-note.oa-tier-change{margin-top:1rem;padding:1rem 1.25rem;border:1px solid var(--oa-gold);border-left-width:6px;border-radius:8px;' +
+    'background:var(--oa-sand);color:var(--oa-ink);font-size:1.125rem;font-weight:500;line-height:1.45}' +
+    '.oa-root .oa-check{display:flex;align-items:flex-start;gap:.75rem;margin:1rem 0 0;color:var(--oa-ink);font-size:1rem;line-height:1.5;cursor:pointer}' +
+    '.oa-root .oa-check input{flex:none;width:1.25rem;height:1.25rem;margin:.15rem 0 0;accent-color:var(--oa-gold)}' +
     '.oa-root .oa-check a{color:inherit;text-decoration:underline}' +
     '.oa-root .oa-check a:hover{color:var(--oa-gold)}' +
-    '.oa-root .oa-error{margin:1rem 0 0;color:var(--oa-error);font-size:var(--_typography---text-fixed-size--text-small,.875rem);line-height:1.4;font-weight:500}' +
+    '.oa-root .oa-error{margin:1rem 0 0;color:var(--oa-error);font-size:1rem;line-height:1.5;font-weight:500}' +
     '.oa-root .oa-actions{margin-top:2rem}' +
     '.oa-root .oa-pay{display:block;width:100%;min-width:200px;padding:.875rem 2rem;border:1px solid var(--oa-gold);border-radius:8px;' +
-    'background:var(--oa-gold);color:var(--oa-paper);font:inherit;font-size:var(--_typography---text-link--link-size,.95rem);font-weight:400;' +
+    'background:var(--oa-gold);color:var(--oa-paper);font:inherit;font-size:1rem;font-weight:400;' +
     'letter-spacing:.05em;text-transform:uppercase;text-align:center;cursor:pointer;transition:all .4s ease}' +
     '.oa-root .oa-pay:hover:not(:disabled){background:var(--oa-paper);color:var(--oa-gold)}' +
     '.oa-root .oa-pay:disabled{opacity:.5;cursor:not-allowed}' +
