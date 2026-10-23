@@ -19,6 +19,8 @@
  *   data-terms-en   URL pagina T&C in inglese     (default: /en/agb)
  *   data-terms-it   URL pagina T&C in italiano    (default: /it/agb)
  *   data-privacy-de/-en/-it  URL pagina Datenschutz (default: /de|en|it/datenschutz)
+ *   I link ai termini e alla privacy aprono il testo SOTTO il form (letto dalla pagina Webflow,
+ *   elemento .section-txt, stesso dominio); in tutti gli altri casi si apre la pagina in una nuova scheda.
  *   Gli stessi attributi si possono mettere sul <div data-oa-donation-form>.
  *
  * STILE
@@ -96,6 +98,8 @@
       newsletterPrefix: 'Acconsento a ricevere la newsletter di Orchestra Aurea e dichiaro di aver letto l\'',
       privacyLink: 'Informativa sulla Privacy',
       newsletterSuffix: '.',
+      docBack: 'Torna al form',
+      docError: 'Impossibile caricare il testo. Aprilo in una nuova scheda:',
       saferpayInfo: 'I pagamenti sono elaborati in sicurezza da Saferpay (Worldline).',
       cardStorageInfo: 'L\'organizzazione non memorizza né processa i dettagli delle carte di pagamento.',
       noAdditionalCharges: 'Non verranno aggiunti costi aggiuntivi per i pagamenti con carta.',
@@ -132,6 +136,8 @@
       newsletterPrefix: 'I agree to receive the Orchestra Aurea newsletter and I have read the ',
       privacyLink: 'Privacy Policy',
       newsletterSuffix: '.',
+      docBack: 'Back to the form',
+      docError: 'The text could not be loaded. Open it in a new tab:',
       saferpayInfo: 'Payments are securely processed by Saferpay (Worldline).',
       cardStorageInfo: 'The organization does not store or process payment card details.',
       noAdditionalCharges: 'No additional charges will be added for card payments.',
@@ -168,6 +174,8 @@
       newsletterPrefix: 'Ich bin mit dem Empfang des Newsletters von Orchestra Aurea einverstanden und habe die ',
       privacyLink: 'Datenschutzerklärung',
       newsletterSuffix: ' gelesen.',
+      docBack: 'Zurück zum Formular',
+      docError: 'Der Text konnte nicht geladen werden. In neuem Tab öffnen:',
       saferpayInfo: 'Zahlungen werden sicher von Saferpay (Worldline) verarbeitet.',
       cardStorageInfo: 'Die Organisation speichert oder verarbeitet keine Kartendaten.',
       noAdditionalCharges: 'Für Kartenzahlungen fallen keine zusätzlichen Gebühren an.',
@@ -287,6 +295,16 @@
     '.oa-root :focus-visible{outline:2px solid var(--oa-gold);outline-offset:2px}' +
     // Campi di testo: niente contorno nero; al focus lo sfondo diventa sand e il bordo oro (2px).
     '.oa-root .oa-input:focus,.oa-root .oa-input:focus-visible{outline:none;background:var(--oa-sand);border-color:var(--oa-gold);box-shadow:0 0 0 1px var(--oa-gold)}' +
+    // Pannello in-page per T&C / Datenschutz (testo preso dalla pagina Webflow, con le classi del sito)
+    '.oa-root .oa-doc{margin-top:2.5rem;padding:clamp(1rem,4vw,1.5rem);border:1px solid var(--oa-sand);border-radius:8px;background:var(--oa-paper)}' +
+    '.oa-root .oa-doc-head{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:flex-start;gap:.75rem 1rem;margin-bottom:1.25rem}' +
+    '.oa-root .oa-doc-head .oa-section-title{flex:1 1 12rem;min-width:0;margin:0}' +
+    '.oa-root .oa-doc-title:focus{outline:none}' +
+    '.oa-root .oa-doc-body{display:flex;flex-direction:column;gap:1rem;color:var(--oa-ink)}' +
+    '.oa-root .oa-doc-body a{color:inherit;text-decoration:underline}' +
+    '.oa-root .oa-doc-close{flex:none;max-width:100%;padding:.5rem 1rem;border:1px solid var(--oa-gold);border-radius:8px;background:transparent;color:var(--oa-gold);font:inherit;font-size:1rem;line-height:1.4;cursor:pointer}' +
+    '.oa-root .oa-doc-close:hover{background:var(--oa-sand)}' +
+    '.oa-root .oa-doc>.oa-doc-close{margin-top:1.5rem}' +
     '.oa-root .oa-hidden{display:none!important}' +
     '@media (max-width:30rem){.oa-root .oa-presets{grid-template-columns:repeat(2,1fr)}.oa-root .oa-pay{padding:.875rem 1rem;letter-spacing:.03em}}';
 
@@ -324,7 +342,16 @@
         '<p class="oa-error oa-hidden" id="oa-error" role="alert"></p>' +
         '<div class="oa-actions"><button type="submit" class="oa-pay" id="oa-pay"></button></div>' +
       '</section>' +
-    '</form>';
+    '</form>' +
+    // Pannello documento (T&C / Datenschutz): sotto tutto il form
+    '<section class="oa-doc oa-hidden" id="oa-doc" aria-labelledby="oa-doc-title">' +
+      '<div class="oa-doc-head">' +
+        '<h2 class="oa-section-title oa-doc-title" id="oa-doc-title" tabindex="-1"></h2>' +
+        '<button type="button" class="oa-doc-close" id="oa-doc-close-top"></button>' +
+      '</div>' +
+      '<div class="oa-doc-body" id="oa-doc-body"></div>' +
+      '<button type="button" class="oa-doc-close" id="oa-doc-close-bottom"></button>' +
+    '</section>';
 
   // ---- AVVIO ----------------------------------------------------------------
   function init() {
@@ -346,7 +373,9 @@
       newsletter: $('oa-newsletter'), newsletterPrefix: $('oa-newsletter-prefix'), privacyLink: $('oa-privacy-link'), newsletterSuffix: $('oa-newsletter-suffix'),
       saferpay: $('oa-saferpay'), charges: $('oa-charges'),
       terms: $('oa-terms'), termsPrefix: $('oa-terms-prefix'), termsLink: $('oa-terms-link'),
-      error: $('oa-error'), pay: $('oa-pay')
+      error: $('oa-error'), pay: $('oa-pay'),
+      doc: $('oa-doc'), docTitle: $('oa-doc-title'), docBody: $('oa-doc-body'),
+      docCloseTop: $('oa-doc-close-top'), docCloseBottom: $('oa-doc-close-bottom')
     };
     var detailKeys = ['firstName', 'lastName', 'address', 'postalCode', 'city', 'email'];
 
@@ -364,6 +393,8 @@
     el.privacyLink.textContent = t.privacyLink;
     el.privacyLink.setAttribute('href', CONFIG.privacy[lang]);
     el.newsletterSuffix.textContent = t.newsletterSuffix;
+    el.docCloseTop.textContent = t.docBack;
+    el.docCloseBottom.textContent = t.docBack;
     // Le due frasi su Saferpay restano nello stesso blocco, nello stesso ordine.
     el.saferpay.innerHTML = '';
     el.saferpay.appendChild(document.createTextNode(t.saferpayInfo));
@@ -593,14 +624,101 @@
     el.terms.addEventListener('change', function (e) { state.termsAccepted = e.target.checked; });
     el.form.addEventListener('submit', submit);
 
-    // Link T&C e Datenschutz: salva la bozza e apre in una nuova scheda anche dove target="_blank" viene ignorato.
-    [el.termsLink, el.privacyLink].forEach(function (link) {
+    // Link T&C e Datenschutz: il testo si apre sotto il form (preso dalla pagina Webflow stessa).
+    // Il link resta un normale link: clic centrale / Ctrl / Cmd, JavaScript spento, pagina non
+    // raggiungibile o altro dominio -> si apre la pagina in una nuova scheda.
+    var docCache = {};
+    var docOpen = null; // { link, origin }
+    function reducedMotion() {
+      return !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+    }
+    function sameOrigin(url) {
+      try { return new URL(url, location.href).origin === location.origin; } catch (e) { return false; }
+    }
+    function sanitize(root) {
+      Array.prototype.slice.call(root.querySelectorAll('script,style,iframe,object,embed,link,meta,form')).forEach(function (n) { n.remove(); });
+      Array.prototype.slice.call(root.querySelectorAll('*')).forEach(function (n) {
+        Array.prototype.slice.call(n.attributes).forEach(function (a) {
+          var name = a.name.toLowerCase();
+          if (name.indexOf('on') === 0 || name === 'id' || name === 'data-w-id' ||
+              ((name === 'href' || name === 'src') && /^\s*javascript:/i.test(a.value))) {
+            n.removeAttribute(a.name);
+          }
+        });
+      });
+    }
+    function fetchDoc(url) {
+      if (docCache[url]) return Promise.resolve(docCache[url]);
+      return fetch(url, { credentials: 'same-origin' }).then(function (r) {
+        if (!r.ok) throw new Error('http ' + r.status);
+        return r.text();
+      }).then(function (html) {
+        var page = new DOMParser().parseFromString(html, 'text/html');
+        var txt = page.querySelector('.section-txt');
+        if (!txt || !txt.children.length) throw new Error('nessun contenuto');
+        var h = page.querySelector('.section_label h1, .section_label h2');
+        sanitize(txt);
+        docCache[url] = { title: h ? h.textContent.trim() : '', html: txt.innerHTML };
+        return docCache[url];
+      });
+    }
+    function setExpanded(link) {
+      [el.termsLink, el.privacyLink].forEach(function (l) {
+        l.setAttribute('aria-expanded', l === link ? 'true' : 'false');
+      });
+    }
+    function closeDoc() {
+      if (!docOpen) return;
+      var o = docOpen;
+      docOpen = null;
+      el.doc.classList.add('oa-hidden');
+      setExpanded(null);
+      o.link.focus({ preventScroll: true });
+      o.origin.scrollIntoView({ behavior: reducedMotion() ? 'auto' : 'smooth', block: 'center' });
+    }
+    function showDoc(link, origin, title, html) {
+      el.docTitle.textContent = title || link.textContent;
+      el.docBody.innerHTML = html;
+      el.doc.classList.remove('oa-hidden');
+      docOpen = { link: link, origin: origin };
+      setExpanded(link);
+      el.doc.scrollIntoView({ behavior: reducedMotion() ? 'auto' : 'smooth', block: 'start' });
+      el.docTitle.focus({ preventScroll: true });
+    }
+    function toggleDoc(link, origin) {
+      if (docOpen && docOpen.link === link) { closeDoc(); return; }
+      var url = link.href;
+      link.setAttribute('aria-busy', 'true');
+      fetchDoc(url).then(function (d) {
+        link.removeAttribute('aria-busy');
+        showDoc(link, origin, d.title, d.html);
+      }).catch(function () {
+        // Niente popup bloccati: si mostra un messaggio con un vero link da cliccare.
+        link.removeAttribute('aria-busy');
+        var p = document.createElement('p');
+        p.appendChild(document.createTextNode(t.docError + ' '));
+        var a = document.createElement('a');
+        a.href = url; a.target = '_blank'; a.rel = 'noopener noreferrer'; a.textContent = link.textContent;
+        p.appendChild(a);
+        showDoc(link, origin, link.textContent, '');
+        el.docBody.appendChild(p);
+      });
+    }
+    [[el.termsLink, el.terms], [el.privacyLink, el.newsletter]].forEach(function (pair) {
+      var link = pair[0], origin = pair[1];
+      link.setAttribute('aria-controls', 'oa-doc');
+      link.setAttribute('aria-expanded', 'false');
       link.addEventListener('click', function (e) {
         saveDraft();
-        var w = window.open(link.href, '_blank', 'noopener');
-        if (w) e.preventDefault();
+        if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return; // comportamento normale del link
+        e.preventDefault();
+        if (!sameOrigin(link.href)) { window.open(link.href, '_blank', 'noopener'); return; }
+        toggleDoc(link, origin);
       });
     });
+    el.docCloseTop.addEventListener('click', closeDoc);
+    el.docCloseBottom.addEventListener('click', closeDoc);
+    el.doc.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeDoc(); });
 
     start();
   }
