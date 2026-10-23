@@ -1,0 +1,7 @@
+{
+  "name": "oa-spenden",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Orchestra Aurea - donazioni via Saferpay: funzioni serverless Vercel e form per il sito Webflow.",
+  "engines": { "node": ">=18" }
+}
