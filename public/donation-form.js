@@ -632,6 +632,42 @@
     function reducedMotion() {
       return !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
     }
+    // Scroll lento e controllato (lo smooth nativo del browser non ha una durata regolabile).
+    // Porta l'elemento a meta' schermo, cosi' si capisce che il form e' ancora sopra.
+    var SCROLL_MIN_MS = 1000, SCROLL_MAX_MS = 1800;
+    var scrollRaf = 0;
+    function stopScroll() {
+      if (scrollRaf) { cancelAnimationFrame(scrollRaf); scrollRaf = 0; }
+      window.removeEventListener('wheel', stopScroll);
+      window.removeEventListener('touchstart', stopScroll);
+      window.removeEventListener('keydown', stopScroll);
+    }
+    function jumpTo(y) {
+      try { window.scrollTo({ top: y, behavior: 'instant' }); } catch (e) { window.scrollTo(0, y); }
+    }
+    function scrollToMiddle(node) {
+      stopScroll();
+      var rect = node.getBoundingClientRect();
+      var maxY = Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
+      var from = window.pageYOffset;
+      var to = Math.min(maxY, Math.max(0, from + rect.top - window.innerHeight / 2 + Math.min(rect.height, 80) / 2));
+      var dist = Math.abs(to - from);
+      if (reducedMotion() || dist < 4 || !window.requestAnimationFrame) { jumpTo(to); return; }
+      var dur = Math.min(SCROLL_MAX_MS, Math.max(SCROLL_MIN_MS, 500 + dist * 0.9));
+      var t0 = 0;
+      function step(now) {
+        if (!t0) t0 = now;
+        var k = Math.min(1, (now - t0) / dur);
+        var e = k < 0.5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2; // easeInOutCubic
+        jumpTo(from + (to - from) * e);
+        if (k < 1) { scrollRaf = requestAnimationFrame(step); } else { stopScroll(); }
+      }
+      // se la persona scrolla da sola, smettiamo di guidare lo scroll
+      window.addEventListener('wheel', stopScroll, { passive: true });
+      window.addEventListener('touchstart', stopScroll, { passive: true });
+      window.addEventListener('keydown', stopScroll);
+      scrollRaf = requestAnimationFrame(step);
+    }
     function sameOrigin(url) {
       try { return new URL(url, location.href).origin === location.origin; } catch (e) { return false; }
     }
@@ -674,7 +710,7 @@
       el.doc.classList.add('oa-hidden');
       setExpanded(null);
       o.link.focus({ preventScroll: true });
-      o.origin.scrollIntoView({ behavior: reducedMotion() ? 'auto' : 'smooth', block: 'center' });
+      scrollToMiddle(o.origin);
     }
     function showDoc(link, origin, title, html) {
       el.docTitle.textContent = title || link.textContent;
@@ -682,7 +718,7 @@
       el.doc.classList.remove('oa-hidden');
       docOpen = { link: link, origin: origin };
       setExpanded(link);
-      el.doc.scrollIntoView({ behavior: reducedMotion() ? 'auto' : 'smooth', block: 'start' });
+      scrollToMiddle(el.docTitle);
       el.docTitle.focus({ preventScroll: true });
     }
     function toggleDoc(link, origin) {
