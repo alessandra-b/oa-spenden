@@ -12,9 +12,9 @@ const js = fs.readFileSync(path.join(__dirname, '../public/donation-form.js'), '
 const embed =
 `<div data-oa-donation-form
      data-endpoint="https://spenden.orchestra-aurea.ch/api/session"
-     data-terms-de="/agb"
-     data-terms-en="/en/terms"
-     data-terms-it="/it/termini"></div>
+     data-terms-de="/de/agb"
+     data-terms-en="/en/agb"
+     data-terms-it="/it/agb"></div>
 <script>
 ${js}</script>
 `;

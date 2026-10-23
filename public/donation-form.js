@@ -15,9 +15,9 @@
  * CONFIGURAZIONE (attributi data-* sul tag <script>; ignorati se lo script e' incollato
  * in un embed senza tag: allora valgono i default qui sotto o gli attributi sul <div>)
  *   data-endpoint   URL di /api/session           (default: spenden.orchestra-aurea.ch)
- *   data-terms-de   URL pagina T&C in tedesco     (default: /terms)
- *   data-terms-en   URL pagina T&C in inglese     (default: /terms)
- *   data-terms-it   URL pagina T&C in italiano    (default: /terms)
+ *   data-terms-de   URL pagina T&C in tedesco     (default: /de/agb)
+ *   data-terms-en   URL pagina T&C in inglese     (default: /en/agb)
+ *   data-terms-it   URL pagina T&C in italiano    (default: /it/agb)
  *   Gli stessi attributi si possono mettere sul <div data-oa-donation-form>.
  *
  * STILE
@@ -47,9 +47,9 @@
   var CONFIG = {
     endpoint: attr('data-endpoint') || 'https://spenden.orchestra-aurea.ch/api/session',
     terms: {
-      de: attr('data-terms-de') || '/terms',
-      en: attr('data-terms-en') || '/terms',
-      it: attr('data-terms-it') || '/terms'
+      de: attr('data-terms-de') || '/de/agb',
+      en: attr('data-terms-en') || '/en/agb',
+      it: attr('data-terms-it') || '/it/agb'
     },
     storageKey: 'oa_donation_draft'
   };

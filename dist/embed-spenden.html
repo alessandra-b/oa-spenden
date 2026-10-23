@@ -1,8 +1,8 @@
 <div data-oa-donation-form
      data-endpoint="https://spenden.orchestra-aurea.ch/api/session"
-     data-terms-de="/agb"
-     data-terms-en="/en/terms"
-     data-terms-it="/it/termini"></div>
+     data-terms-de="/de/agb"
+     data-terms-en="/en/agb"
+     data-terms-it="/it/agb"></div>
 <script>
 (function () {
   'use strict';
@@ -21,9 +21,9 @@
   var CONFIG = {
     endpoint: attr('data-endpoint') || 'https://spenden.orchestra-aurea.ch/api/session',
     terms: {
-      de: attr('data-terms-de') || '/terms',
-      en: attr('data-terms-en') || '/terms',
-      it: attr('data-terms-it') || '/terms'
+      de: attr('data-terms-de') || '/de/agb',
+      en: attr('data-terms-en') || '/en/agb',
+      it: attr('data-terms-it') || '/it/agb'
     },
     storageKey: 'oa_donation_draft'
   };
