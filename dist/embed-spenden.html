@@ -1,0 +1,574 @@
+<div data-oa-donation-form
+     data-endpoint="https://spenden.orchestra-aurea.ch/api/session"
+     data-terms-de="/agb"
+     data-terms-en="/en/terms"
+     data-terms-it="/it/termini"></div>
+<script>
+(function () {
+  'use strict';
+
+  if (window.__oaDonationLoaded) return;
+  window.__oaDonationLoaded = true;
+
+  // ---- CONFIGURAZIONE ---------------------------------------------------
+  var scriptEl = document.currentScript;
+  var rootEl = document.querySelector('[data-oa-donation-form]'); // dove compare il form
+  function attr(name) {
+    var v = rootEl && rootEl.getAttribute(name);
+    if (v) return v;
+    return scriptEl && scriptEl.getAttribute(name) ? scriptEl.getAttribute(name) : '';
+  }
+  var CONFIG = {
+    endpoint: attr('data-endpoint') || 'https://spenden.orchestra-aurea.ch/api/session',
+    terms: {
+      de: attr('data-terms-de') || '/terms',
+      en: attr('data-terms-en') || '/terms',
+      it: attr('data-terms-it') || '/terms'
+    },
+    storageKey: 'oa_donation_draft'
+  };
+
+  // Livelli e soglie. Il livello effettivo dipende dall'importo: sopra la soglia di un
+  // livello si "sale", sotto la soglia di quello scelto si "scende" (fino a ECHO).
+  // ATTENZIONE: stesse soglie di api/session.js (il server ricalcola il livello da solo).
+  var LEVELS = {
+    PULSE: { min: 100 },
+    FLOW: { min: 500 },
+    RESONANCE: { min: 1000 },
+    ECHO: { min: 1, free: true }
+  };
+  var TIERS_DESC = ['RESONANCE', 'FLOW', 'PULSE']; // dal piu' alto al piu' basso
+  var RANK = { ECHO: 0, PULSE: 1, FLOW: 2, RESONANCE: 3 };
+  var MIN_AMOUNT = 1; // importo minimo assoluto (CHF)
+  var PRESET_STEPS = [0, 50, 100, 150];
+
+  // ---- TESTI --------------------------------------------------------------
+  var LABELS = {
+    it: {
+      proceedDonationPayment: 'Procedi al pagamento della donazione',
+      plan: 'Piano',
+      yourDetails: 'I tuoi dati',
+      firstName: 'Nome',
+      lastName: 'Cognome',
+      address: 'Indirizzo',
+      postalCode: 'CAP',
+      city: 'Città',
+      email: 'Email',
+      chooseContribution: 'Scegli il tuo contributo',
+      customAmount: 'Importo personalizzato',
+      minimumForSelection: 'Minimo per questa selezione',
+      tierFrom: 'Livello {tier} da CHF {min}',
+      tierUp: 'Con questa donazione passi al livello {tier} e hai diritto a tutti i suoi vantaggi.',
+      tierDown: 'Con questo importo la donazione rientra nel livello {tier}.',
+      tierEcho: 'Con questo importo la donazione diventa ECHO, un contributo a tua misura.',
+      newsletter: 'Desidero ricevere la newsletter di Orchestra Aurea.',
+      saferpayInfo: 'I pagamenti sono elaborati in sicurezza da Saferpay (Worldline).',
+      cardStorageInfo: 'L\'organizzazione non memorizza né processa i dettagli delle carte di pagamento.',
+      noAdditionalCharges: 'Non verranno aggiunti costi aggiuntivi per i pagamenti con carta.',
+      acceptTermsPrefix: 'Accetto i',
+      termsAndConditions: 'Termini e Condizioni',
+      completeFields: 'Compila tutti i campi obbligatori prima di continuare.',
+      validEmail: 'Inserisci un indirizzo email valido.',
+      atLeastAmount: 'Inserisci almeno CHF {min}.',
+      amountTooHigh: 'Per importi superiori a CHF {max} contattaci direttamente.',
+      acceptTermsError: 'Accetta i Termini e Condizioni prima di procedere.',
+      unableToStartPayment: 'Impossibile avviare il pagamento. Riprova.',
+      noRedirectUrl: 'Nessun URL di reindirizzamento ricevuto. Riprova.',
+      connectionError: 'Errore di connessione. Riprova.',
+      redirecting: 'Reindirizzamento…',
+      proceedPayment: 'Procedi al pagamento'
+    },
+    en: {
+      proceedDonationPayment: 'Proceed to donation payment',
+      plan: 'Plan',
+      yourDetails: 'Your details',
+      firstName: 'First name',
+      lastName: 'Last name',
+      address: 'Address',
+      postalCode: 'Postal code',
+      city: 'City',
+      email: 'Email',
+      chooseContribution: 'Choose your contribution',
+      customAmount: 'Custom amount',
+      minimumForSelection: 'Minimum for this selection',
+      tierFrom: '{tier} level from CHF {min}',
+      tierUp: 'With this donation you move up to the {tier} level and receive all of its benefits.',
+      tierDown: 'With this amount your donation falls under the {tier} level.',
+      tierEcho: 'With this amount your donation becomes ECHO, a contribution of your own choosing.',
+      newsletter: 'I would like to receive the Orchestra Aurea newsletter.',
+      saferpayInfo: 'Payments are securely processed by Saferpay (Worldline).',
+      cardStorageInfo: 'The organization does not store or process payment card details.',
+      noAdditionalCharges: 'No additional charges will be added for card payments.',
+      acceptTermsPrefix: 'I accept the',
+      termsAndConditions: 'Terms & Conditions',
+      completeFields: 'Please complete all required fields before continuing.',
+      validEmail: 'Please enter a valid email address.',
+      atLeastAmount: 'Please enter at least CHF {min}.',
+      amountTooHigh: 'For amounts above CHF {max} please contact us directly.',
+      acceptTermsError: 'Please accept the Terms & Conditions before proceeding.',
+      unableToStartPayment: 'Unable to start payment. Please try again.',
+      noRedirectUrl: 'No redirect URL was returned. Please try again.',
+      connectionError: 'Connection error. Please try again.',
+      redirecting: 'Redirecting…',
+      proceedPayment: 'Proceed to payment'
+    },
+    de: {
+      proceedDonationPayment: 'Zur Spendenzahlung fortfahren',
+      plan: 'Plan',
+      yourDetails: 'Ihre Angaben',
+      firstName: 'Vorname',
+      lastName: 'Nachname',
+      address: 'Adresse',
+      postalCode: 'PLZ',
+      city: 'Stadt',
+      email: 'E-Mail',
+      chooseContribution: 'Wählen Sie Ihren Beitrag',
+      customAmount: 'Betrag eingeben',
+      minimumForSelection: 'Mindestbetrag für diese Auswahl',
+      tierFrom: 'Stufe {tier} ab CHF {min}',
+      tierUp: 'Mit diesem Betrag gelangen Sie in die Stufe {tier} und erhalten alle ihre Vorteile.',
+      tierDown: 'Mit diesem Betrag gehört Ihre Spende zur Stufe {tier}.',
+      tierEcho: 'Mit diesem Betrag wird Ihre Spende zu ECHO, einem Beitrag nach Ihrem Mass.',
+      newsletter: 'Ich möchte den Newsletter von Orchestra Aurea erhalten.',
+      saferpayInfo: 'Zahlungen werden sicher von Saferpay (Worldline) verarbeitet.',
+      cardStorageInfo: 'Die Organisation speichert oder verarbeitet keine Kartendaten.',
+      noAdditionalCharges: 'Für Kartenzahlungen fallen keine zusätzlichen Gebühren an.',
+      acceptTermsPrefix: 'Ich akzeptiere die',
+      termsAndConditions: 'Allgemeinen Geschäftsbedingungen',
+      completeFields: 'Bitte füllen Sie alle Pflichtfelder aus, bevor Sie fortfahren.',
+      validEmail: 'Bitte geben Sie eine gültige E-Mail-Adresse ein.',
+      atLeastAmount: 'Bitte geben Sie einen Betrag von mindestens CHF {min} ein.',
+      amountTooHigh: 'Für Beträge über CHF {max} kontaktieren Sie uns bitte direkt.',
+      acceptTermsError: 'Bitte akzeptieren Sie die Allgemeinen Geschäftsbedingungen, bevor Sie fortfahren.',
+      unableToStartPayment: 'Zahlung konnte nicht gestartet werden. Bitte versuchen Sie es erneut.',
+      noRedirectUrl: 'Keine Weiterleitungs-URL erhalten. Bitte versuchen Sie es erneut.',
+      connectionError: 'Verbindungsfehler. Bitte versuchen Sie es erneut.',
+      redirecting: 'Weiterleitung…',
+      proceedPayment: 'Zur Zahlung fortfahren'
+    }
+  };
+
+  // ---- LINGUA -------------------------------------------------------------
+  // 1) attributo lang di <html> (Webflow lo imposta per ogni locale, es. "de-CH")
+  // 2) prefisso del percorso (/en/..., /it/...)
+  // 3) tedesco (lingua principale del sito)
+  function detectLang() {
+    var fromHtml = (document.documentElement.lang || '').slice(0, 2).toLowerCase();
+    if (LABELS[fromHtml]) return fromHtml;
+    var fromPath = (location.pathname.split('/')[1] || '').slice(0, 2).toLowerCase();
+    if (LABELS[fromPath]) return fromPath;
+    return 'de';
+  }
+  var lang = detectLang();
+  var t = LABELS[lang];
+
+  // ---- STATO --------------------------------------------------------------
+  function emptyDetails() {
+    return { firstName: '', lastName: '', address: '', postalCode: '', city: '', email: '' };
+  }
+  var state = {
+    level: 'ECHO',
+    selectedAmount: null,
+    customAmount: '',
+    details: emptyDetails(),
+    newsletter: false,
+    termsAccepted: false,
+    submitting: false
+  };
+
+  // ---- BOZZA (sessionStorage) --------------------------------------------
+  // Rete di sicurezza: se il browser naviga via (es. apertura dei T&C nella stessa
+  // scheda su mobile), i dati compilati si ripristinano alla riapertura.
+  function saveDraft() {
+    try {
+      sessionStorage.setItem(CONFIG.storageKey, JSON.stringify({
+        level: state.level,
+        selectedAmount: state.selectedAmount,
+        customAmount: state.customAmount,
+        details: state.details,
+        newsletter: state.newsletter
+      }));
+    } catch (e) { /* storage non disponibile: nessun problema */ }
+  }
+  function loadDraft() {
+    try {
+      var raw = sessionStorage.getItem(CONFIG.storageKey);
+      return raw ? JSON.parse(raw) : null;
+    } catch (e) { return null; }
+  }
+  function clearDraft() {
+    try { sessionStorage.removeItem(CONFIG.storageKey); } catch (e) { /* ignore */ }
+  }
+  // Pagamento riuscito (la pagina "Danke" ha ?status=success): la bozza non serve più.
+  if (/[?&]status=success\b/.test(location.search)) clearDraft();
+
+
+  // ---- STILE --------------------------------------------------------------
+  // Colori e font vengono dalle variabili del sito Webflow; il secondo valore di ogni
+  // var() e' il fallback quando la pagina non e' su Webflow (anteprima locale).
+  var CSS = '' +
+    '.oa-root{--oa-ink:var(--color--ink,#1c1a17);--oa-gold:var(--color--gold-deep,#8a6a2a);' +
+    '--oa-sand:var(--color--sand,#ebddc1);--oa-paper:var(--color--paper,#fff);--oa-bg:var(--color--paper-warm,#f9f5ec);--oa-error:#8f2d1f;' +
+    'box-sizing:border-box;width:100%;max-width:40rem;margin:0 auto;padding:clamp(1rem,4vw,2rem);border-radius:8px;background:var(--oa-bg);color:var(--oa-ink);' +
+    'font-family:var(--font-family,"Switzer Variable",Helvetica,Arial,sans-serif);' +
+    'font-size:var(--_typography---text-body--body-size,1rem);line-height:var(--_typography---line-height--lh-body,1.5)}' +
+    '.oa-root *{box-sizing:border-box}' +
+    '.oa-root .oa-label{margin:0 0 1.5rem;color:var(--oa-gold);font-size:var(--_typography---text-fixed-size--text-label,1rem);' +
+    'line-height:1.3;font-weight:500;letter-spacing:.05em;text-transform:uppercase}' +
+    '.oa-root .oa-section-title{margin:0 0 .75rem;color:var(--oa-gold);font-size:var(--_typography---text-fixed-size--text-label,1rem);' +
+    'line-height:1.3;font-weight:500;letter-spacing:.05em;text-transform:uppercase}' +
+    '.oa-root .oa-section+.oa-section{margin-top:2rem}' +
+    '.oa-root .oa-presets{display:grid;grid-template-columns:repeat(4,1fr);gap:.5rem;margin-bottom:1rem}' +
+    '.oa-root .oa-preset{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.125rem;min-height:4.25rem;' +
+    'border:1px solid var(--oa-gold);border-radius:8px;background:var(--oa-paper);color:var(--oa-gold);cursor:pointer;' +
+    'font:inherit;font-size:1.125rem;font-weight:500;transition:all .4s ease}' +
+    '.oa-root .oa-preset span:first-child{font-size:1rem;font-weight:400;letter-spacing:.05em}' +
+    '.oa-root .oa-preset:hover{background:var(--oa-sand);background:color-mix(in srgb,var(--oa-sand) 60%,var(--oa-paper))}' +
+    '.oa-root .oa-preset.oa-selected{background:var(--oa-gold);color:var(--oa-paper)}' +
+    '.oa-root .oa-input{display:block;width:100%;height:auto;margin:0;padding:.75rem 1rem;border:1px solid var(--oa-gold);border-radius:8px;' +
+    'background:var(--oa-paper);color:var(--oa-ink);font:inherit;font-size:1rem;line-height:1.4;-webkit-appearance:none;appearance:none}' +
+    '.oa-root .oa-input::placeholder{color:var(--oa-ink);opacity:.6}' +
+    '.oa-root .oa-amount-input{font-weight:500}' +
+    '.oa-root .oa-fields{display:grid;gap:.75rem}' +
+    '.oa-root .oa-row{display:grid;grid-template-columns:1fr 2fr;gap:.75rem}' +
+    '.oa-root .oa-note{margin:.75rem 0 0;color:var(--oa-ink);font-size:1rem;line-height:1.5}' +
+    // Avviso di cambio livello: riquadro ben visibile (pubblico over 50)
+    '.oa-root .oa-note.oa-tier-change{margin-top:1rem;padding:1rem 1.25rem;border:1px solid var(--oa-gold);border-left-width:6px;border-radius:8px;' +
+    'background:var(--oa-sand);color:var(--oa-ink);font-size:1.125rem;font-weight:500;line-height:1.45}' +
+    '.oa-root .oa-check{display:flex;align-items:flex-start;gap:.75rem;margin:1rem 0 0;color:var(--oa-ink);font-size:1rem;line-height:1.5;cursor:pointer}' +
+    '.oa-root .oa-check input{flex:none;width:1.25rem;height:1.25rem;margin:.15rem 0 0;accent-color:var(--oa-gold)}' +
+    '.oa-root .oa-check a{color:inherit;text-decoration:underline}' +
+    '.oa-root .oa-check a:hover{color:var(--oa-gold)}' +
+    '.oa-root .oa-error{margin:1rem 0 0;color:var(--oa-error);font-size:1rem;line-height:1.5;font-weight:500}' +
+    '.oa-root .oa-actions{margin-top:2rem}' +
+    '.oa-root .oa-pay{display:block;width:100%;min-width:200px;padding:.875rem 2rem;border:1px solid var(--oa-gold);border-radius:8px;' +
+    'background:var(--oa-gold);color:var(--oa-paper);font:inherit;font-size:1rem;font-weight:400;' +
+    'letter-spacing:.05em;text-transform:uppercase;text-align:center;cursor:pointer;transition:all .4s ease}' +
+    '.oa-root .oa-pay:hover:not(:disabled){background:var(--oa-paper);color:var(--oa-gold)}' +
+    '.oa-root .oa-pay:disabled{opacity:.5;cursor:not-allowed}' +
+    '.oa-root :focus-visible{outline:2px solid var(--oa-ink);outline-offset:2px}' +
+    '.oa-root .oa-hidden{display:none!important}' +
+    '@media (max-width:30rem){.oa-root .oa-presets{grid-template-columns:repeat(2,1fr)}.oa-root .oa-pay{padding:.875rem 1rem;letter-spacing:.03em}}';
+
+  // ---- MARKUP ---------------------------------------------------------------
+  var MARKUP = '' +
+    '<form class="oa-form" id="oa-form" novalidate autocomplete="on">' +
+      '<p class="oa-label" id="oa-subtitle"></p>' +
+      // 1. Importo
+      '<section class="oa-section">' +
+        '<h2 class="oa-section-title" id="oa-amount-title"></h2>' +
+        '<div class="oa-presets" id="oa-presets"></div>' +
+        '<input class="oa-input oa-amount-input" id="oa-amount" type="number" inputmode="decimal" step="1" min="1">' +
+        '<p class="oa-note" id="oa-min-note" role="status" aria-live="polite"></p>' +
+      '</section>' +
+      // 2. Dati
+      '<section class="oa-section">' +
+        '<h2 class="oa-section-title" id="oa-details-title"></h2>' +
+        '<div class="oa-fields">' +
+          '<input class="oa-input" id="oa-firstName" name="firstName" type="text" autocomplete="given-name" required>' +
+          '<input class="oa-input" id="oa-lastName" name="lastName" type="text" autocomplete="family-name" required>' +
+          '<input class="oa-input" id="oa-address" name="address" type="text" autocomplete="street-address" required>' +
+          '<div class="oa-row">' +
+            '<input class="oa-input" id="oa-postalCode" name="postalCode" type="text" autocomplete="postal-code" required>' +
+            '<input class="oa-input" id="oa-city" name="city" type="text" autocomplete="address-level2" required>' +
+          '</div>' +
+          '<input class="oa-input" id="oa-email" name="email" type="email" autocomplete="email" required>' +
+        '</div>' +
+        '<label class="oa-check"><input type="checkbox" id="oa-newsletter"><span id="oa-newsletter-label"></span></label>' +
+      '</section>' +
+      // 3. Testi Saferpay + termini + pagamento
+      '<section class="oa-section">' +
+        '<p class="oa-note" id="oa-saferpay"></p>' +
+        '<p class="oa-note" id="oa-charges"></p>' +
+        '<label class="oa-check"><input type="checkbox" id="oa-terms"><span><span id="oa-terms-prefix"></span> <a id="oa-terms-link" href="#" target="_blank" rel="noopener noreferrer"></a>.</span></label>' +
+        '<p class="oa-error oa-hidden" id="oa-error" role="alert"></p>' +
+        '<div class="oa-actions"><button type="submit" class="oa-pay" id="oa-pay"></button></div>' +
+      '</section>' +
+    '</form>';
+
+  // ---- AVVIO ----------------------------------------------------------------
+  function init() {
+    var styleEl = document.createElement('style');
+    styleEl.setAttribute('data-oa-donation', '');
+    styleEl.textContent = CSS;
+    document.head.appendChild(styleEl);
+
+    rootEl.classList.add('oa-root');
+    rootEl.innerHTML = MARKUP;
+
+    function $(id) { return rootEl.querySelector('#' + id); }
+    var el = {
+      form: $('oa-form'), subtitle: $('oa-subtitle'),
+      amountTitle: $('oa-amount-title'), presets: $('oa-presets'), amount: $('oa-amount'), minNote: $('oa-min-note'),
+      detailsTitle: $('oa-details-title'),
+      firstName: $('oa-firstName'), lastName: $('oa-lastName'), address: $('oa-address'),
+      postalCode: $('oa-postalCode'), city: $('oa-city'), email: $('oa-email'),
+      newsletter: $('oa-newsletter'), newsletterLabel: $('oa-newsletter-label'),
+      saferpay: $('oa-saferpay'), charges: $('oa-charges'),
+      terms: $('oa-terms'), termsPrefix: $('oa-terms-prefix'), termsLink: $('oa-terms-link'),
+      error: $('oa-error'), pay: $('oa-pay')
+    };
+    var detailKeys = ['firstName', 'lastName', 'address', 'postalCode', 'city', 'email'];
+
+    // Testi statici (cambiano solo con la lingua)
+    el.form.setAttribute('aria-label', t.proceedDonationPayment);
+    el.amountTitle.textContent = t.chooseContribution;
+    el.amount.setAttribute('placeholder', t.customAmount);
+    el.amount.setAttribute('aria-label', t.customAmount);
+    el.detailsTitle.textContent = t.yourDetails;
+    detailKeys.forEach(function (k) {
+      el[k].setAttribute('placeholder', t[k]);
+      el[k].setAttribute('aria-label', t[k]);
+    });
+    el.newsletterLabel.textContent = t.newsletter;
+    // Le due frasi su Saferpay restano nello stesso blocco, nello stesso ordine.
+    el.saferpay.innerHTML = '';
+    el.saferpay.appendChild(document.createTextNode(t.saferpayInfo));
+    el.saferpay.appendChild(document.createElement('br'));
+    el.saferpay.appendChild(document.createTextNode(t.cardStorageInfo));
+    el.charges.textContent = t.noAdditionalCharges;
+    el.termsPrefix.textContent = t.acceptTermsPrefix;
+    el.termsLink.textContent = t.termsAndConditions;
+    el.termsLink.setAttribute('href', CONFIG.terms[lang]);
+
+    // ---- LOGICA -------------------------------------------------------------
+    function currentAmount() {
+      if (state.selectedAmount != null) return state.selectedAmount;
+      var n = parseFloat(String(state.customAmount).replace(',', '.'));
+      return isFinite(n) ? n : 0;
+    }
+    // Livello in cui cade un importo. Senza importo, resta quello da cui si e' partiti.
+    function tierFor(amount) {
+      for (var i = 0; i < TIERS_DESC.length; i++) {
+        if (amount >= LEVELS[TIERS_DESC[i]].min) return TIERS_DESC[i];
+      }
+      return 'ECHO';
+    }
+    function effectiveLevel() {
+      var a = currentAmount();
+      return a > 0 ? tierFor(a) : state.level;
+    }
+    function validEmail(v) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim()); }
+    function fmt(template, vars) {
+      return template.replace(/\{(\w+)\}/g, function (_, k) { return vars[k]; });
+    }
+
+    function showError(msg) {
+      el.error.textContent = msg;
+      el.error.classList.remove('oa-hidden');
+    }
+    function clearError() {
+      el.error.textContent = '';
+      el.error.classList.add('oa-hidden');
+    }
+
+    function renderPresets() {
+      el.presets.innerHTML = '';
+      var level = LEVELS[state.level];
+      if (level.free) {
+        el.presets.classList.add('oa-hidden');
+        return;
+      }
+      el.presets.classList.remove('oa-hidden');
+      PRESET_STEPS.forEach(function (step) {
+        var value = level.min + step;
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'oa-preset' + (state.selectedAmount === value ? ' oa-selected' : '');
+        var a = document.createElement('span'); a.textContent = 'CHF';
+        var b = document.createElement('span'); b.textContent = String(value);
+        btn.appendChild(a); btn.appendChild(b);
+        btn.addEventListener('click', function () {
+          state.selectedAmount = value;
+          state.customAmount = '';
+          el.amount.value = '';
+          saveDraft();
+          clearError();
+          render();
+        });
+        el.presets.appendChild(btn);
+      });
+    }
+
+    // Testo sotto il campo importo: indicazione di partenza, oppure avviso di cambio livello.
+    function tierNote(eff) {
+      if (eff === state.level) {
+        return LEVELS[state.level].free
+          ? t.minimumForSelection + ': CHF ' + MIN_AMOUNT
+          : fmt(t.tierFrom, { tier: state.level, min: LEVELS[state.level].min });
+      }
+      if (eff === 'ECHO') return t.tierEcho;
+      return RANK[eff] > RANK[state.level] ? fmt(t.tierUp, { tier: eff }) : fmt(t.tierDown, { tier: eff });
+    }
+
+    function render() {
+      var eff = effectiveLevel();
+      el.subtitle.textContent = t.plan + ': ' + eff;
+      el.amount.min = String(MIN_AMOUNT);
+      el.minNote.textContent = tierNote(eff);
+      el.minNote.classList.toggle('oa-tier-change', eff !== state.level);
+      renderPresets();
+      el.pay.textContent = state.submitting
+        ? t.redirecting
+        : t.proceedPayment + ' CHF ' + (currentAmount() || LEVELS[state.level].min);
+      el.pay.disabled = state.submitting;
+    }
+
+    function fillInputsFromState() {
+      detailKeys.forEach(function (k) { el[k].value = state.details[k] || ''; });
+      el.amount.value = state.selectedAmount != null ? '' : state.customAmount;
+      el.newsletter.checked = !!state.newsletter;
+      el.terms.checked = !!state.termsAccepted;
+    }
+
+    // Livello richiesto dall'indirizzo (?level=FLOW) o dall'attributo data-level del <div>.
+    function requestedLevel() {
+      var m = /[?&]level=([^&#]*)/i.exec(location.search);
+      var raw = m ? decodeURIComponent(m[1]) : rootEl.getAttribute('data-level');
+      var key = String(raw || '').toUpperCase();
+      return LEVELS[key] ? key : null;
+    }
+
+    function start() {
+      var requested = requestedLevel();
+      var draft = loadDraft();
+      state.submitting = false;
+      state.termsAccepted = false;
+      state.level = requested || (draft && LEVELS[draft.level] ? draft.level : 'ECHO');
+      // Dati personali e newsletter si riprendono dalla bozza; l'importo solo se e' dello stesso livello.
+      state.details = draft && draft.details ? Object.assign(emptyDetails(), draft.details) : emptyDetails();
+      state.newsletter = draft ? !!draft.newsletter : false;
+      if (draft && draft.level === state.level) {
+        state.selectedAmount = draft.selectedAmount;
+        state.customAmount = draft.customAmount || '';
+      } else {
+        state.selectedAmount = null;
+        state.customAmount = '';
+      }
+      fillInputsFromState();
+      clearError();
+      render();
+    }
+
+    function submit(event) {
+      event.preventDefault();
+      if (state.submitting) return;
+      clearError();
+
+      var amount = currentAmount();
+      var d = state.details;
+
+      if (!(amount >= MIN_AMOUNT)) {
+        showError(fmt(t.atLeastAmount, { min: MIN_AMOUNT }));
+        el.amount.focus();
+        return;
+      }
+      for (var i = 0; i < detailKeys.length; i++) {
+        if (!d[detailKeys[i]].trim()) {
+          showError(t.completeFields);
+          el[detailKeys[i]].focus();
+          return;
+        }
+      }
+      if (!validEmail(d.email)) {
+        showError(t.validEmail);
+        el.email.focus();
+        return;
+      }
+      if (!state.termsAccepted) {
+        showError(t.acceptTermsError);
+        el.terms.focus();
+        return;
+      }
+
+      state.submitting = true;
+      render();
+
+      fetch(CONFIG.endpoint, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          amount: amount,
+          currency: 'CHF',
+          membership: effectiveLevel(),
+          lang: lang,
+          donor: {
+            firstName: d.firstName.trim(),
+            lastName: d.lastName.trim(),
+            address: d.address.trim(),
+            postalCode: d.postalCode.trim(),
+            city: d.city.trim(),
+            email: d.email.trim(),
+            newsletter: !!state.newsletter
+          },
+          termsAccepted: true
+        })
+      })
+        .then(function (response) {
+          return response.json().then(function (payload) { return { ok: response.ok, payload: payload }; });
+        })
+        .then(function (result) {
+          if (!result.ok) {
+            var p = result.payload || {};
+            if (p.code === 'AMOUNT_TOO_HIGH') showError(fmt(t.amountTooHigh, { max: p.max }));
+            else if (p.code === 'AMOUNT_TOO_LOW') showError(fmt(t.atLeastAmount, { min: p.min }));
+            else showError(t.unableToStartPayment);
+            state.submitting = false;
+            render();
+            return;
+          }
+          if (result.payload && result.payload.redirectUrl) {
+            window.location.href = result.payload.redirectUrl;
+            return; // si resta in stato "Reindirizzamento…"
+          }
+          showError(t.noRedirectUrl);
+          state.submitting = false;
+          render();
+        })
+        .catch(function () {
+          showError(t.connectionError);
+          state.submitting = false;
+          render();
+        });
+    }
+
+    // ---- EVENTI -------------------------------------------------------------
+    detailKeys.forEach(function (k) {
+      el[k].addEventListener('input', function (e) {
+        state.details[k] = e.target.value;
+        saveDraft();
+      });
+    });
+    el.amount.addEventListener('input', function (e) {
+      state.customAmount = e.target.value;
+      state.selectedAmount = null;
+      saveDraft();
+      render();
+    });
+    el.newsletter.addEventListener('change', function (e) { state.newsletter = e.target.checked; saveDraft(); });
+    el.terms.addEventListener('change', function (e) { state.termsAccepted = e.target.checked; });
+    el.form.addEventListener('submit', submit);
+
+    // Link T&C: salva la bozza e apre in una nuova scheda anche dove target="_blank" viene ignorato.
+    el.termsLink.addEventListener('click', function (e) {
+      saveDraft();
+      var w = window.open(el.termsLink.href, '_blank', 'noopener');
+      if (w) e.preventDefault();
+    });
+
+    start();
+  }
+
+  // Si avvia solo se la pagina contiene <div data-oa-donation-form>. Sulle altre pagine
+  // (es. "Danke") lo script serve solo a svuotare la bozza, gia' fatto sopra.
+  if (rootEl) {
+    init();
+  } else if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', function () {
+      rootEl = document.querySelector('[data-oa-donation-form]');
+      if (rootEl) init();
+    });
+  }
+})();
+</script>

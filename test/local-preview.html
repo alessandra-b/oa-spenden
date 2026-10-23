@@ -5,19 +5,24 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Anteprima locale - donation form</title>
   <style>
-    body { font-family: Helvetica, Arial, sans-serif; background:#f9f5ec; color:#1c1a17; padding:2rem 1rem; }
-    a.btn { display:inline-block; margin:.25rem; padding:.75rem 1rem; background:#d6bb84; color:#1c1a17; text-decoration:none; }
+    /* Simula le variabili del sito Webflow (nel sito vere ci sono gia'). */
+    :root{--font-family:"Switzer Variable";--color--paper:white;--color--paper-warm:#f9f5ec;--color--sand:#ebddc1;--color--sand-deep:#e3d0aa;--color--gold:#cea146;--color--gold-light:#d6bb84;--color--gold-deep:#8a6a2a;--color--ink:#1c1a17;}
+    body { margin:0; font-family:Helvetica, Arial, sans-serif; background:var(--color--paper-warm); color:var(--color--ink); }
+    .page { padding:4rem 1rem; }
+    nav { max-width:36rem; margin:0 auto 2rem; font-size:.875rem; }
+    nav a { margin-right:.75rem; color:var(--color--gold-deep); }
   </style>
 </head>
 <body>
-  <h1>Anteprima locale</h1>
-  <p>Simula i bottoni della pagina Spenden di Webflow (stessi attributi da aggiungere nel Designer).</p>
-  <a class="btn" href="#" data-oa-donate="PULSE">Spende ab CHF 100</a>
-  <a class="btn" href="#" data-oa-donate="FLOW">Spende ab CHF 500</a>
-  <a class="btn" href="#" data-oa-donate="RESONANCE">Spende ab CHF 1000</a>
-  <a class="btn" href="#" data-oa-donate="ECHO">Freier Betrag</a>
+  <div class="page">
+    <!-- Simula i link della pagina Spenden di Webflow: stessa pagina del form, ?level= diverso -->
+    <nav>
+      <a href="?level=PULSE">PULSE</a><a href="?level=FLOW">FLOW</a><a href="?level=RESONANCE">RESONANCE</a><a href="?level=ECHO">ECHO</a>
+    </nav>
+    <div data-oa-donation-form></div>
+  </div>
 
-  <!-- In produzione: data-endpoint resta quello di default (spenden.orchestra-aurea.ch). -->
+  <!-- Solo anteprima: l'endpoint locale non esiste, il pagamento non parte. In produzione si toglie data-endpoint. -->
   <script src="../public/donation-form.js" data-endpoint="http://localhost:3000/api/session" data-terms-de="/agb" data-terms-en="/en/terms" data-terms-it="/it/termini" defer></script>
 </body>
 </html>

@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="de-CH">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex,nofollow">
+  <title>TEST - Danke</title>
+  <style>
+    :root{--font-family:"Switzer Variable";--color--paper:white;--color--paper-warm:#f9f5ec;--color--sand:#ebddc1;--color--sand-deep:#e3d0aa;--color--gold:#cea146;--color--gold-light:#d6bb84;--color--gold-deep:#8a6a2a;--color--ink:#1c1a17;}
+    body { margin:0; padding:3rem 1rem; font-family:Helvetica, Arial, sans-serif; background:var(--color--paper-warm); color:var(--color--ink); }
+    main { max-width:36rem; margin:0 auto; }
+    code { background:#fff; padding:.1rem .35rem; }
+  </style>
+</head>
+<body>
+  <main>
+    <p><strong>PAGINA DI TEST</strong> (al posto della pagina "Danke" di Webflow)</p>
+    <h1 id="msg"></h1>
+    <p><a href="/test-form.html">Torna al form di prova</a></p>
+  </main>
+  <script>
+    var q = new URLSearchParams(location.search);
+    var status = q.get('status');
+    var text = {
+      success: 'Pagamento riuscito: la donazione e\' stata incassata (status=success).',
+      incomplete: 'Pagamento non completato (status=incomplete).',
+      error: 'Qualcosa e\' andato storto (status=error).'
+    };
+    document.getElementById('msg').textContent = status ? (text[status] || ('status=' + status)) :
+      (q.get('terms') ? 'Qui andra\' la pagina Termini e Condizioni (' + q.get('terms') + ').' : 'Nessuno status nell\'indirizzo.');
+    // Come sul sito vero, lo stesso script svuota la bozza dopo un pagamento riuscito.
+  </script>
+  <script src="/donation-form.js" defer></script>
+</body>
+</html>

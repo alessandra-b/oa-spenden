@@ -1,25 +1,34 @@
 /*
- * Orchestra Aurea — form di donazione (popup a schermata unica)
- * =============================================================
- * Servito da https://spenden.orchestra-aurea.ch/donation-form.js e caricato
- * dalle pagine Webflow con un <script src="..."> (vedi README.md).
+ * Orchestra Aurea — form di donazione (pagina dedicata, schermata unica)
+ * ======================================================================
+ * Servito da https://spenden.orchestra-aurea.ch/donation-form.js, oppure incollato
+ * per intero in un Code Embed di Webflow (vedi README.md: "Due modi di inserirlo").
  *
- * COME SI APRE
- *   Qualunque elemento con l'attributo  data-oa-donate="PULSE|FLOW|RESONANCE|ECHO"
- *   apre il popup al click. In alternativa:
- *   window.dispatchEvent(new CustomEvent('oa:open-popup', { detail: { id: 'donation-FLOW' } }))
+ * COME SI USA
+ *   Nella pagina Webflow del form (una per lingua) si mette un solo elemento:
+ *       <div data-oa-donation-form></div>
+ *   Il form compare lì dentro. Il livello di partenza arriva dall'indirizzo:
+ *       /spenden/formular?level=PULSE      (PULSE | FLOW | RESONANCE | ECHO)
+ *   quindi i bottoni della pagina Spenden sono normali link Webflow verso la pagina
+ *   del form, uno per livello. In alternativa: <div data-oa-donation-form data-level="FLOW">.
  *
- * CONFIGURAZIONE (attributi data-* sul tag <script>)
+ * CONFIGURAZIONE (attributi data-* sul tag <script>; ignorati se lo script e' incollato
+ * in un embed senza tag: allora valgono i default qui sotto o gli attributi sul <div>)
  *   data-endpoint   URL di /api/session           (default: spenden.orchestra-aurea.ch)
  *   data-terms-de   URL pagina T&C in tedesco     (default: /terms)
  *   data-terms-en   URL pagina T&C in inglese     (default: /terms)
  *   data-terms-it   URL pagina T&C in italiano    (default: /terms)
+ *   Gli stessi attributi si possono mettere sul <div data-oa-donation-form>.
+ *
+ * STILE
+ *   Usa le variabili del sito Webflow (--color--ink, --color--gold-deep, --color--sand,
+ *   --color--paper, --font-family, scale tipografiche). Se mancano (anteprima fuori da
+ *   Webflow) valgono i colori di fallback scritti qui.
  *
  * TESTI
  *   Le tre frasi su Saferpay (saferpayInfo, cardStorageInfo, noAdditionalCharges)
- *   e la dicitura dei termini sono quelle del form attuale: cambia solo la
- *   posizione nella pagina. Correzioni ortografiche rispetto all'originale
- *   (umlaut tedeschi, "Città", "né") elencate in README.md.
+ *   e la dicitura dei termini sono quelle del form attuale. Correzioni ortografiche
+ *   rispetto all'originale (umlaut tedeschi, "Città", "né") elencate in README.md.
  */
 (function () {
   'use strict';
@@ -29,7 +38,10 @@
 
   // ---- CONFIGURAZIONE ---------------------------------------------------
   var scriptEl = document.currentScript;
+  var rootEl = document.querySelector('[data-oa-donation-form]'); // dove compare il form
   function attr(name) {
+    var v = rootEl && rootEl.getAttribute(name);
+    if (v) return v;
     return scriptEl && scriptEl.getAttribute(name) ? scriptEl.getAttribute(name) : '';
   }
   var CONFIG = {
@@ -90,8 +102,7 @@
       noRedirectUrl: 'Nessun URL di reindirizzamento ricevuto. Riprova.',
       connectionError: 'Errore di connessione. Riprova.',
       redirecting: 'Reindirizzamento…',
-      proceedPayment: 'Procedi al pagamento',
-      close: 'Chiudi'
+      proceedPayment: 'Procedi al pagamento'
     },
     en: {
       proceedDonationPayment: 'Proceed to donation payment',
@@ -125,8 +136,7 @@
       noRedirectUrl: 'No redirect URL was returned. Please try again.',
       connectionError: 'Connection error. Please try again.',
       redirecting: 'Redirecting…',
-      proceedPayment: 'Proceed to payment',
-      close: 'Close'
+      proceedPayment: 'Proceed to payment'
     },
     de: {
       proceedDonationPayment: 'Zur Spendenzahlung fortfahren',
@@ -160,8 +170,7 @@
       noRedirectUrl: 'Keine Weiterleitungs-URL erhalten. Bitte versuchen Sie es erneut.',
       connectionError: 'Verbindungsfehler. Bitte versuchen Sie es erneut.',
       redirecting: 'Weiterleitung…',
-      proceedPayment: 'Zur Zahlung fortfahren',
-      close: 'Schliessen'
+      proceedPayment: 'Zur Zahlung fortfahren'
     }
   };
 
@@ -192,8 +201,6 @@
     termsAccepted: false,
     submitting: false
   };
-  var isOpen = false;
-  var lastFocus = null;
 
   // ---- BOZZA (sessionStorage) --------------------------------------------
   // Rete di sicurezza: se il browser naviga via (es. apertura dei T&C nella stessa
@@ -221,395 +228,371 @@
   // Pagamento riuscito (la pagina "Danke" ha ?status=success): la bozza non serve più.
   if (/[?&]status=success\b/.test(location.search)) clearDraft();
 
-  // ---- STILE --------------------------------------------------------------
-  var CSS = '' +
-    '.oa-overlay{--oa-bg:#e3d0aa;--oa-ink:#1c1a17;--oa-btn:#534c41;--oa-btn-ink:#d6bb84;--oa-hover:#ebddc1;' +
-    'display:none;position:fixed;inset:0;z-index:2147483000;overflow-y:auto;-webkit-overflow-scrolling:touch;' +
-    'background:rgba(249,245,236,.94);padding:1rem;font-family:inherit;color:var(--oa-ink)}' +
-    '.oa-overlay.oa-open{display:block}' +
-    '.oa-overlay *{box-sizing:border-box}' +
-    '.oa-form{position:relative;width:100%;max-width:27rem;margin:0 auto;background:var(--oa-bg);color:var(--oa-ink)}' +
-    '.oa-body{padding:0 1rem 1rem}' +
-    '.oa-header{display:flex;align-items:flex-start;justify-content:space-between;border-top:1px solid var(--oa-ink);padding:.5rem 0;margin:1.5rem 0 1.25rem}' +
-    '.oa-title{font-size:.9375rem;font-weight:500;margin:0;line-height:1.3}' +
-    '.oa-subtitle{font-size:.9375rem;margin:.25rem 0 0;line-height:1.3;font-weight:400}' +
-    '.oa-close{font:inherit;font-size:1.75rem;line-height:1;background:none;border:0;cursor:pointer;color:inherit;padding:0 .25rem}' +
-    '.oa-close:hover{text-decoration:underline}' +
-    '.oa-section-title{margin:0 0 .75rem;font-size:1rem;font-weight:500}' +
-    '.oa-section+.oa-section{margin-top:1.5rem}' +
-    '.oa-presets{display:grid;grid-template-columns:repeat(4,1fr);gap:.5rem;margin-bottom:1rem}' +
-    '.oa-preset{height:4rem;border:1px solid var(--oa-ink);background:transparent;color:inherit;cursor:pointer;font:inherit;font-size:1rem;font-weight:500;display:flex;flex-direction:column;align-items:center;justify-content:center}' +
-    '.oa-preset:hover{background:var(--oa-hover)}' +
-    '.oa-preset.oa-selected{background:var(--oa-btn);color:var(--oa-btn-ink)}' +
-    '.oa-input{width:100%;border:1px solid var(--oa-ink);border-radius:0;background:transparent;color:inherit;font:inherit;font-size:1rem;padding:.625rem .75rem;-webkit-appearance:none;appearance:none}' +
-    '.oa-input::placeholder{color:inherit;opacity:.6}' +
-    '.oa-amount-input{text-align:center;font-weight:500}' +
-    '.oa-fields{display:grid;gap:.75rem}' +
-    '.oa-row{display:grid;grid-template-columns:1fr 2fr;gap:.75rem}' +
-    '.oa-note{font-size:.875rem;margin:.5rem 0 0;line-height:1.4}' +
-    '.oa-tier-change{font-weight:500}' +
-    '.oa-check{display:flex;align-items:flex-start;gap:.625rem;font-size:.875rem;line-height:1.4;margin-top:1rem}' +
-    '.oa-check input{flex:none;width:1.125rem;height:1.125rem;margin:.1rem 0 0;accent-color:var(--oa-btn)}' +
-    '.oa-check a{color:inherit;text-decoration:underline}' +
-    '.oa-check a:hover{opacity:.7}' +
-    '.oa-error{margin:.75rem 0 0;font-size:.875rem;line-height:1.4;font-weight:500}' +
-    '.oa-footer{position:sticky;bottom:0;background:var(--oa-bg);padding:.75rem 1rem 1rem;border-top:1px solid rgba(28,26,23,.25)}' +
-    '.oa-pay{width:100%;border:1px solid var(--oa-ink);border-radius:0;padding:.75rem;font:inherit;font-size:1rem;font-weight:500;background:var(--oa-btn);color:var(--oa-btn-ink);cursor:pointer}' +
-    '.oa-pay:hover{background:var(--oa-ink)}' +
-    '.oa-pay:disabled{opacity:.45;cursor:not-allowed}' +
-    '.oa-overlay :focus-visible{outline:2px solid var(--oa-ink);outline-offset:2px}' +
-    '.oa-hidden{display:none!important}' +
-    '@media (min-width:600px){.oa-overlay{padding:3rem 1rem}}';
 
-  var styleEl = document.createElement('style');
-  styleEl.setAttribute('data-oa-donation', '');
-  styleEl.textContent = CSS;
-  document.head.appendChild(styleEl);
+  // ---- STILE --------------------------------------------------------------
+  // Colori e font vengono dalle variabili del sito Webflow; il secondo valore di ogni
+  // var() e' il fallback quando la pagina non e' su Webflow (anteprima locale).
+  var CSS = '' +
+    '.oa-root{--oa-ink:var(--color--ink,#1c1a17);--oa-gold:var(--color--gold-deep,#8a6a2a);' +
+    '--oa-sand:var(--color--sand,#ebddc1);--oa-paper:var(--color--paper,#fff);--oa-error:#8f2d1f;' +
+    'box-sizing:border-box;width:100%;max-width:36rem;margin:0 auto;color:var(--oa-ink);' +
+    'font-family:var(--font-family,"Switzer Variable",Helvetica,Arial,sans-serif);' +
+    'font-size:var(--_typography---text-body--body-size,1rem);line-height:var(--_typography---line-height--lh-body,1.5)}' +
+    '.oa-root *{box-sizing:border-box}' +
+    '.oa-root .oa-label{margin:0 0 1.5rem;color:var(--oa-gold);font-size:var(--_typography---text-fixed-size--text-label,1rem);' +
+    'line-height:1.3;font-weight:500;letter-spacing:.05em;text-transform:uppercase}' +
+    '.oa-root .oa-section-title{margin:0 0 .75rem;color:var(--oa-gold);font-size:var(--_typography---text-fixed-size--text-label,1rem);' +
+    'line-height:1.3;font-weight:500;letter-spacing:.05em;text-transform:uppercase}' +
+    '.oa-root .oa-section+.oa-section{margin-top:2rem}' +
+    '.oa-root .oa-presets{display:grid;grid-template-columns:repeat(4,1fr);gap:.5rem;margin-bottom:1rem}' +
+    '.oa-root .oa-preset{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.125rem;min-height:4.25rem;' +
+    'border:1px solid var(--oa-gold);border-radius:8px;background:var(--oa-paper);color:var(--oa-gold);cursor:pointer;' +
+    'font:inherit;font-size:1.125rem;font-weight:500;transition:all .4s ease}' +
+    '.oa-root .oa-preset span:first-child{font-size:.75rem;font-weight:400;letter-spacing:.05em}' +
+    '.oa-root .oa-preset:hover{background:var(--oa-sand);background:color-mix(in srgb,var(--oa-sand) 60%,var(--oa-paper))}' +
+    '.oa-root .oa-preset.oa-selected{background:var(--oa-gold);color:var(--oa-paper)}' +
+    '.oa-root .oa-input{display:block;width:100%;height:auto;margin:0;padding:.75rem 1rem;border:1px solid var(--oa-gold);border-radius:8px;' +
+    'background:var(--oa-paper);color:var(--oa-ink);font:inherit;font-size:1rem;line-height:1.4;-webkit-appearance:none;appearance:none}' +
+    '.oa-root .oa-input::placeholder{color:var(--oa-ink);opacity:.6}' +
+    '.oa-root .oa-amount-input{font-weight:500}' +
+    '.oa-root .oa-fields{display:grid;gap:.75rem}' +
+    '.oa-root .oa-row{display:grid;grid-template-columns:1fr 2fr;gap:.75rem}' +
+    '.oa-root .oa-note{margin:.75rem 0 0;font-size:var(--_typography---text-fixed-size--text-small,.875rem);line-height:var(--_typography---line-height--lh-small,1.4)}' +
+    '.oa-root .oa-tier-change{font-weight:500;color:var(--oa-gold)}' +
+    '.oa-root .oa-check{display:flex;align-items:flex-start;gap:.75rem;margin:1rem 0 0;font-size:var(--_typography---text-fixed-size--text-small,.875rem);' +
+    'line-height:var(--_typography---line-height--lh-small,1.4);cursor:pointer}' +
+    '.oa-root .oa-check input{flex:none;width:1.25rem;height:1.25rem;margin:.05rem 0 0;accent-color:var(--oa-gold)}' +
+    '.oa-root .oa-check a{color:inherit;text-decoration:underline}' +
+    '.oa-root .oa-check a:hover{color:var(--oa-gold)}' +
+    '.oa-root .oa-error{margin:1rem 0 0;color:var(--oa-error);font-size:var(--_typography---text-fixed-size--text-small,.875rem);line-height:1.4;font-weight:500}' +
+    '.oa-root .oa-actions{margin-top:2rem}' +
+    '.oa-root .oa-pay{display:block;width:100%;min-width:200px;padding:.875rem 2rem;border:1px solid var(--oa-gold);border-radius:8px;' +
+    'background:var(--oa-gold);color:var(--oa-paper);font:inherit;font-size:var(--_typography---text-link--link-size,.95rem);font-weight:400;' +
+    'letter-spacing:.05em;text-transform:uppercase;text-align:center;cursor:pointer;transition:all .4s ease}' +
+    '.oa-root .oa-pay:hover:not(:disabled){background:var(--oa-paper);color:var(--oa-gold)}' +
+    '.oa-root .oa-pay:disabled{opacity:.5;cursor:not-allowed}' +
+    '.oa-root :focus-visible{outline:2px solid var(--oa-ink);outline-offset:2px}' +
+    '.oa-root .oa-hidden{display:none!important}' +
+    '@media (max-width:30rem){.oa-root .oa-presets{grid-template-columns:repeat(2,1fr)}.oa-root .oa-pay{padding:.875rem 1rem;letter-spacing:.03em}}';
 
   // ---- MARKUP ---------------------------------------------------------------
-  var overlay = document.createElement('div');
-  overlay.className = 'oa-overlay';
-  overlay.setAttribute('role', 'dialog');
-  overlay.setAttribute('aria-modal', 'true');
-  overlay.setAttribute('aria-labelledby', 'oa-title');
-  overlay.innerHTML = '' +
+  var MARKUP = '' +
     '<form class="oa-form" id="oa-form" novalidate autocomplete="on">' +
-      '<div class="oa-body">' +
-        '<div class="oa-header">' +
-          '<div><h2 class="oa-title" id="oa-title"></h2><h3 class="oa-subtitle" id="oa-subtitle"></h3></div>' +
-          '<button type="button" class="oa-close" id="oa-close">&times;</button>' +
-        '</div>' +
-        // 1. Importo
-        '<section class="oa-section">' +
-          '<h3 class="oa-section-title" id="oa-amount-title"></h3>' +
-          '<div class="oa-presets" id="oa-presets"></div>' +
-          '<input class="oa-input oa-amount-input" id="oa-amount" type="number" inputmode="decimal" step="1" min="1">' +
-          '<p class="oa-note" id="oa-min-note" role="status" aria-live="polite"></p>' +
-        '</section>' +
-        // 2. Dati
-        '<section class="oa-section">' +
-          '<h3 class="oa-section-title" id="oa-details-title"></h3>' +
-          '<div class="oa-fields">' +
-            '<input class="oa-input" id="oa-firstName" name="firstName" type="text" autocomplete="given-name" required>' +
-            '<input class="oa-input" id="oa-lastName" name="lastName" type="text" autocomplete="family-name" required>' +
-            '<input class="oa-input" id="oa-address" name="address" type="text" autocomplete="street-address" required>' +
-            '<div class="oa-row">' +
-              '<input class="oa-input" id="oa-postalCode" name="postalCode" type="text" autocomplete="postal-code" required>' +
-              '<input class="oa-input" id="oa-city" name="city" type="text" autocomplete="address-level2" required>' +
-            '</div>' +
-            '<input class="oa-input" id="oa-email" name="email" type="email" autocomplete="email" required>' +
+      '<p class="oa-label" id="oa-subtitle"></p>' +
+      // 1. Importo
+      '<section class="oa-section">' +
+        '<h2 class="oa-section-title" id="oa-amount-title"></h2>' +
+        '<div class="oa-presets" id="oa-presets"></div>' +
+        '<input class="oa-input oa-amount-input" id="oa-amount" type="number" inputmode="decimal" step="1" min="1">' +
+        '<p class="oa-note" id="oa-min-note" role="status" aria-live="polite"></p>' +
+      '</section>' +
+      // 2. Dati
+      '<section class="oa-section">' +
+        '<h2 class="oa-section-title" id="oa-details-title"></h2>' +
+        '<div class="oa-fields">' +
+          '<input class="oa-input" id="oa-firstName" name="firstName" type="text" autocomplete="given-name" required>' +
+          '<input class="oa-input" id="oa-lastName" name="lastName" type="text" autocomplete="family-name" required>' +
+          '<input class="oa-input" id="oa-address" name="address" type="text" autocomplete="street-address" required>' +
+          '<div class="oa-row">' +
+            '<input class="oa-input" id="oa-postalCode" name="postalCode" type="text" autocomplete="postal-code" required>' +
+            '<input class="oa-input" id="oa-city" name="city" type="text" autocomplete="address-level2" required>' +
           '</div>' +
-          '<label class="oa-check"><input type="checkbox" id="oa-newsletter"><span id="oa-newsletter-label"></span></label>' +
-        '</section>' +
-        // 3. Testi Saferpay + termini
-        '<section class="oa-section">' +
-          '<p class="oa-note" id="oa-saferpay"></p>' +
-          '<p class="oa-note" id="oa-charges"></p>' +
-          '<label class="oa-check"><input type="checkbox" id="oa-terms"><span><span id="oa-terms-prefix"></span> <a id="oa-terms-link" href="#" target="_blank" rel="noopener noreferrer"></a>.</span></label>' +
-        '</section>' +
+          '<input class="oa-input" id="oa-email" name="email" type="email" autocomplete="email" required>' +
+        '</div>' +
+        '<label class="oa-check"><input type="checkbox" id="oa-newsletter"><span id="oa-newsletter-label"></span></label>' +
+      '</section>' +
+      // 3. Testi Saferpay + termini + pagamento
+      '<section class="oa-section">' +
+        '<p class="oa-note" id="oa-saferpay"></p>' +
+        '<p class="oa-note" id="oa-charges"></p>' +
+        '<label class="oa-check"><input type="checkbox" id="oa-terms"><span><span id="oa-terms-prefix"></span> <a id="oa-terms-link" href="#" target="_blank" rel="noopener noreferrer"></a>.</span></label>' +
         '<p class="oa-error oa-hidden" id="oa-error" role="alert"></p>' +
-      '</div>' +
-      '<div class="oa-footer"><button type="submit" class="oa-pay" id="oa-pay"></button></div>' +
+        '<div class="oa-actions"><button type="submit" class="oa-pay" id="oa-pay"></button></div>' +
+      '</section>' +
     '</form>';
-  document.body.appendChild(overlay);
 
-  function $(id) { return overlay.querySelector('#' + id); }
-  var el = {
-    form: $('oa-form'), title: $('oa-title'), subtitle: $('oa-subtitle'), close: $('oa-close'),
-    amountTitle: $('oa-amount-title'), presets: $('oa-presets'), amount: $('oa-amount'), minNote: $('oa-min-note'),
-    detailsTitle: $('oa-details-title'),
-    firstName: $('oa-firstName'), lastName: $('oa-lastName'), address: $('oa-address'),
-    postalCode: $('oa-postalCode'), city: $('oa-city'), email: $('oa-email'),
-    newsletter: $('oa-newsletter'), newsletterLabel: $('oa-newsletter-label'),
-    saferpay: $('oa-saferpay'), charges: $('oa-charges'),
-    terms: $('oa-terms'), termsPrefix: $('oa-terms-prefix'), termsLink: $('oa-terms-link'),
-    error: $('oa-error'), pay: $('oa-pay')
-  };
-  var detailKeys = ['firstName', 'lastName', 'address', 'postalCode', 'city', 'email'];
+  // ---- AVVIO ----------------------------------------------------------------
+  function init() {
+    var styleEl = document.createElement('style');
+    styleEl.setAttribute('data-oa-donation', '');
+    styleEl.textContent = CSS;
+    document.head.appendChild(styleEl);
 
-  // Testi statici (cambiano solo con la lingua)
-  el.title.textContent = t.proceedDonationPayment;
-  el.close.setAttribute('aria-label', t.close);
-  el.amountTitle.textContent = t.chooseContribution;
-  el.amount.setAttribute('placeholder', t.customAmount);
-  el.amount.setAttribute('aria-label', t.customAmount);
-  el.detailsTitle.textContent = t.yourDetails;
-  detailKeys.forEach(function (k) {
-    el[k].setAttribute('placeholder', t[k]);
-    el[k].setAttribute('aria-label', t[k]);
-  });
-  el.newsletterLabel.textContent = t.newsletter;
-  // Le due frasi su Saferpay restano nello stesso blocco, nello stesso ordine.
-  el.saferpay.innerHTML = '';
-  el.saferpay.appendChild(document.createTextNode(t.saferpayInfo));
-  el.saferpay.appendChild(document.createElement('br'));
-  el.saferpay.appendChild(document.createTextNode(t.cardStorageInfo));
-  el.charges.textContent = t.noAdditionalCharges;
-  el.termsPrefix.textContent = t.acceptTermsPrefix;
-  el.termsLink.textContent = t.termsAndConditions;
-  el.termsLink.setAttribute('href', CONFIG.terms[lang]);
+    rootEl.classList.add('oa-root');
+    rootEl.innerHTML = MARKUP;
 
-  // ---- LOGICA ---------------------------------------------------------------
-  function currentAmount() {
-    if (state.selectedAmount != null) return state.selectedAmount;
-    var n = parseFloat(String(state.customAmount).replace(',', '.'));
-    return isFinite(n) ? n : 0;
-  }
-  // Livello in cui cade un importo. Senza importo, resta quello da cui si e' partiti.
-  function tierFor(amount) {
-    for (var i = 0; i < TIERS_DESC.length; i++) {
-      if (amount >= LEVELS[TIERS_DESC[i]].min) return TIERS_DESC[i];
-    }
-    return 'ECHO';
-  }
-  function effectiveLevel() {
-    var a = currentAmount();
-    return a > 0 ? tierFor(a) : state.level;
-  }
-  function validEmail(v) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim()); }
-  function fmt(template, vars) {
-    return template.replace(/\{(\w+)\}/g, function (_, k) { return vars[k]; });
-  }
+    function $(id) { return rootEl.querySelector('#' + id); }
+    var el = {
+      form: $('oa-form'), subtitle: $('oa-subtitle'),
+      amountTitle: $('oa-amount-title'), presets: $('oa-presets'), amount: $('oa-amount'), minNote: $('oa-min-note'),
+      detailsTitle: $('oa-details-title'),
+      firstName: $('oa-firstName'), lastName: $('oa-lastName'), address: $('oa-address'),
+      postalCode: $('oa-postalCode'), city: $('oa-city'), email: $('oa-email'),
+      newsletter: $('oa-newsletter'), newsletterLabel: $('oa-newsletter-label'),
+      saferpay: $('oa-saferpay'), charges: $('oa-charges'),
+      terms: $('oa-terms'), termsPrefix: $('oa-terms-prefix'), termsLink: $('oa-terms-link'),
+      error: $('oa-error'), pay: $('oa-pay')
+    };
+    var detailKeys = ['firstName', 'lastName', 'address', 'postalCode', 'city', 'email'];
 
-  function showError(msg) {
-    el.error.textContent = msg;
-    el.error.classList.remove('oa-hidden');
-  }
-  function clearError() {
-    el.error.textContent = '';
-    el.error.classList.add('oa-hidden');
-  }
-
-  function renderPresets() {
-    el.presets.innerHTML = '';
-    var level = LEVELS[state.level];
-    if (level.free) {
-      el.presets.classList.add('oa-hidden');
-      return;
-    }
-    el.presets.classList.remove('oa-hidden');
-    PRESET_STEPS.forEach(function (step) {
-      var value = level.min + step;
-      var btn = document.createElement('button');
-      btn.type = 'button';
-      btn.className = 'oa-preset' + (state.selectedAmount === value ? ' oa-selected' : '');
-      var a = document.createElement('span'); a.textContent = 'CHF';
-      var b = document.createElement('span'); b.textContent = String(value);
-      btn.appendChild(a); btn.appendChild(b);
-      btn.addEventListener('click', function () {
-        state.selectedAmount = value;
-        state.customAmount = '';
-        el.amount.value = '';
-        saveDraft();
-        clearError();
-        render();
-      });
-      el.presets.appendChild(btn);
+    // Testi statici (cambiano solo con la lingua)
+    el.form.setAttribute('aria-label', t.proceedDonationPayment);
+    el.amountTitle.textContent = t.chooseContribution;
+    el.amount.setAttribute('placeholder', t.customAmount);
+    el.amount.setAttribute('aria-label', t.customAmount);
+    el.detailsTitle.textContent = t.yourDetails;
+    detailKeys.forEach(function (k) {
+      el[k].setAttribute('placeholder', t[k]);
+      el[k].setAttribute('aria-label', t[k]);
     });
-  }
+    el.newsletterLabel.textContent = t.newsletter;
+    // Le due frasi su Saferpay restano nello stesso blocco, nello stesso ordine.
+    el.saferpay.innerHTML = '';
+    el.saferpay.appendChild(document.createTextNode(t.saferpayInfo));
+    el.saferpay.appendChild(document.createElement('br'));
+    el.saferpay.appendChild(document.createTextNode(t.cardStorageInfo));
+    el.charges.textContent = t.noAdditionalCharges;
+    el.termsPrefix.textContent = t.acceptTermsPrefix;
+    el.termsLink.textContent = t.termsAndConditions;
+    el.termsLink.setAttribute('href', CONFIG.terms[lang]);
 
-  // Testo sotto il campo importo: indicazione di partenza, oppure avviso di cambio livello.
-  function tierNote(eff) {
-    if (eff === state.level) {
-      return LEVELS[state.level].free
-        ? t.minimumForSelection + ': CHF ' + MIN_AMOUNT
-        : fmt(t.tierFrom, { tier: state.level, min: LEVELS[state.level].min });
+    // ---- LOGICA -------------------------------------------------------------
+    function currentAmount() {
+      if (state.selectedAmount != null) return state.selectedAmount;
+      var n = parseFloat(String(state.customAmount).replace(',', '.'));
+      return isFinite(n) ? n : 0;
     }
-    if (eff === 'ECHO') return t.tierEcho;
-    return RANK[eff] > RANK[state.level] ? fmt(t.tierUp, { tier: eff }) : fmt(t.tierDown, { tier: eff });
-  }
-
-  function render() {
-    var eff = effectiveLevel();
-    el.subtitle.textContent = t.plan + ': ' + eff;
-    el.amount.min = String(MIN_AMOUNT);
-    el.minNote.textContent = tierNote(eff);
-    el.minNote.classList.toggle('oa-tier-change', eff !== state.level);
-    renderPresets();
-    el.pay.textContent = state.submitting
-      ? t.redirecting
-      : t.proceedPayment + ' CHF ' + (currentAmount() || LEVELS[state.level].min);
-    el.pay.disabled = state.submitting;
-  }
-
-  function fillInputsFromState() {
-    detailKeys.forEach(function (k) { el[k].value = state.details[k] || ''; });
-    el.amount.value = state.selectedAmount != null ? '' : state.customAmount;
-    el.newsletter.checked = !!state.newsletter;
-    el.terms.checked = !!state.termsAccepted;
-  }
-
-  function normalizeLevel(raw) {
-    var key = String(raw || '').toUpperCase();
-    return LEVELS[key] ? key : 'ECHO';
-  }
-
-  function open(levelId) {
-    var requested = levelId ? normalizeLevel(levelId) : null;
-    var draft = loadDraft();
-    state.submitting = false;
-    state.termsAccepted = false;
-    state.level = requested || (draft && LEVELS[draft.level] ? draft.level : 'ECHO');
-    // La bozza si riapplica solo se è dello stesso livello; altrimenti ripartono solo i dati personali.
-    state.details = draft && draft.details ? Object.assign(emptyDetails(), draft.details) : emptyDetails();
-    state.newsletter = draft ? !!draft.newsletter : false;
-    if (draft && draft.level === state.level) {
-      state.selectedAmount = draft.selectedAmount;
-      state.customAmount = draft.customAmount || '';
-    } else {
-      state.selectedAmount = null;
-      state.customAmount = '';
+    // Livello in cui cade un importo. Senza importo, resta quello da cui si e' partiti.
+    function tierFor(amount) {
+      for (var i = 0; i < TIERS_DESC.length; i++) {
+        if (amount >= LEVELS[TIERS_DESC[i]].min) return TIERS_DESC[i];
+      }
+      return 'ECHO';
     }
-    fillInputsFromState();
-    clearError();
-    render();
-    lastFocus = document.activeElement;
-    isOpen = true;
-    overlay.classList.add('oa-open');
-    overlay.scrollTop = 0;
-    document.documentElement.style.overflow = 'hidden';
-    (LEVELS[state.level].free ? el.amount : el.presets.querySelector('button') || el.amount).focus({ preventScroll: true });
-  }
-
-  function close() {
-    isOpen = false;
-    overlay.classList.remove('oa-open');
-    document.documentElement.style.overflow = '';
-    if (lastFocus && lastFocus.focus) { try { lastFocus.focus({ preventScroll: true }); } catch (e) { /* ignore */ } }
-  }
-
-  function submit(event) {
-    event.preventDefault();
-    if (state.submitting) return;
-    clearError();
-
-    var amount = currentAmount();
-    var d = state.details;
-
-    if (!(amount >= MIN_AMOUNT)) {
-      showError(fmt(t.atLeastAmount, { min: MIN_AMOUNT }));
-      el.amount.focus();
-      return;
+    function effectiveLevel() {
+      var a = currentAmount();
+      return a > 0 ? tierFor(a) : state.level;
     }
-    for (var i = 0; i < detailKeys.length; i++) {
-      if (!d[detailKeys[i]].trim()) {
-        showError(t.completeFields);
-        el[detailKeys[i]].focus();
+    function validEmail(v) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim()); }
+    function fmt(template, vars) {
+      return template.replace(/\{(\w+)\}/g, function (_, k) { return vars[k]; });
+    }
+
+    function showError(msg) {
+      el.error.textContent = msg;
+      el.error.classList.remove('oa-hidden');
+    }
+    function clearError() {
+      el.error.textContent = '';
+      el.error.classList.add('oa-hidden');
+    }
+
+    function renderPresets() {
+      el.presets.innerHTML = '';
+      var level = LEVELS[state.level];
+      if (level.free) {
+        el.presets.classList.add('oa-hidden');
         return;
       }
-    }
-    if (!validEmail(d.email)) {
-      showError(t.validEmail);
-      el.email.focus();
-      return;
-    }
-    if (!state.termsAccepted) {
-      showError(t.acceptTermsError);
-      el.terms.focus();
-      return;
-    }
-
-    state.submitting = true;
-    render();
-
-    fetch(CONFIG.endpoint, {
-      method: 'POST',
-      credentials: 'include',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        amount: amount,
-        currency: 'CHF',
-        membership: effectiveLevel(),
-        lang: lang,
-        donor: {
-          firstName: d.firstName.trim(),
-          lastName: d.lastName.trim(),
-          address: d.address.trim(),
-          postalCode: d.postalCode.trim(),
-          city: d.city.trim(),
-          email: d.email.trim(),
-          newsletter: !!state.newsletter
-        },
-        termsAccepted: true
-      })
-    })
-      .then(function (response) {
-        return response.json().then(function (payload) { return { ok: response.ok, payload: payload }; });
-      })
-      .then(function (result) {
-        if (!result.ok) {
-          var p = result.payload || {};
-          if (p.code === 'AMOUNT_TOO_HIGH') showError(fmt(t.amountTooHigh, { max: p.max }));
-          else if (p.code === 'AMOUNT_TOO_LOW') showError(fmt(t.atLeastAmount, { min: p.min }));
-          else showError(t.unableToStartPayment);
-          state.submitting = false;
+      el.presets.classList.remove('oa-hidden');
+      PRESET_STEPS.forEach(function (step) {
+        var value = level.min + step;
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'oa-preset' + (state.selectedAmount === value ? ' oa-selected' : '');
+        var a = document.createElement('span'); a.textContent = 'CHF';
+        var b = document.createElement('span'); b.textContent = String(value);
+        btn.appendChild(a); btn.appendChild(b);
+        btn.addEventListener('click', function () {
+          state.selectedAmount = value;
+          state.customAmount = '';
+          el.amount.value = '';
+          saveDraft();
+          clearError();
           render();
+        });
+        el.presets.appendChild(btn);
+      });
+    }
+
+    // Testo sotto il campo importo: indicazione di partenza, oppure avviso di cambio livello.
+    function tierNote(eff) {
+      if (eff === state.level) {
+        return LEVELS[state.level].free
+          ? t.minimumForSelection + ': CHF ' + MIN_AMOUNT
+          : fmt(t.tierFrom, { tier: state.level, min: LEVELS[state.level].min });
+      }
+      if (eff === 'ECHO') return t.tierEcho;
+      return RANK[eff] > RANK[state.level] ? fmt(t.tierUp, { tier: eff }) : fmt(t.tierDown, { tier: eff });
+    }
+
+    function render() {
+      var eff = effectiveLevel();
+      el.subtitle.textContent = t.plan + ': ' + eff;
+      el.amount.min = String(MIN_AMOUNT);
+      el.minNote.textContent = tierNote(eff);
+      el.minNote.classList.toggle('oa-tier-change', eff !== state.level);
+      renderPresets();
+      el.pay.textContent = state.submitting
+        ? t.redirecting
+        : t.proceedPayment + ' CHF ' + (currentAmount() || LEVELS[state.level].min);
+      el.pay.disabled = state.submitting;
+    }
+
+    function fillInputsFromState() {
+      detailKeys.forEach(function (k) { el[k].value = state.details[k] || ''; });
+      el.amount.value = state.selectedAmount != null ? '' : state.customAmount;
+      el.newsletter.checked = !!state.newsletter;
+      el.terms.checked = !!state.termsAccepted;
+    }
+
+    // Livello richiesto dall'indirizzo (?level=FLOW) o dall'attributo data-level del <div>.
+    function requestedLevel() {
+      var m = /[?&]level=([^&#]*)/i.exec(location.search);
+      var raw = m ? decodeURIComponent(m[1]) : rootEl.getAttribute('data-level');
+      var key = String(raw || '').toUpperCase();
+      return LEVELS[key] ? key : null;
+    }
+
+    function start() {
+      var requested = requestedLevel();
+      var draft = loadDraft();
+      state.submitting = false;
+      state.termsAccepted = false;
+      state.level = requested || (draft && LEVELS[draft.level] ? draft.level : 'ECHO');
+      // Dati personali e newsletter si riprendono dalla bozza; l'importo solo se e' dello stesso livello.
+      state.details = draft && draft.details ? Object.assign(emptyDetails(), draft.details) : emptyDetails();
+      state.newsletter = draft ? !!draft.newsletter : false;
+      if (draft && draft.level === state.level) {
+        state.selectedAmount = draft.selectedAmount;
+        state.customAmount = draft.customAmount || '';
+      } else {
+        state.selectedAmount = null;
+        state.customAmount = '';
+      }
+      fillInputsFromState();
+      clearError();
+      render();
+    }
+
+    function submit(event) {
+      event.preventDefault();
+      if (state.submitting) return;
+      clearError();
+
+      var amount = currentAmount();
+      var d = state.details;
+
+      if (!(amount >= MIN_AMOUNT)) {
+        showError(fmt(t.atLeastAmount, { min: MIN_AMOUNT }));
+        el.amount.focus();
+        return;
+      }
+      for (var i = 0; i < detailKeys.length; i++) {
+        if (!d[detailKeys[i]].trim()) {
+          showError(t.completeFields);
+          el[detailKeys[i]].focus();
           return;
         }
-        if (result.payload && result.payload.redirectUrl) {
-          window.location.href = result.payload.redirectUrl;
-          return; // si resta in stato "Reindirizzamento…"
-        }
-        showError(t.noRedirectUrl);
-        state.submitting = false;
-        render();
+      }
+      if (!validEmail(d.email)) {
+        showError(t.validEmail);
+        el.email.focus();
+        return;
+      }
+      if (!state.termsAccepted) {
+        showError(t.acceptTermsError);
+        el.terms.focus();
+        return;
+      }
+
+      state.submitting = true;
+      render();
+
+      fetch(CONFIG.endpoint, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          amount: amount,
+          currency: 'CHF',
+          membership: effectiveLevel(),
+          lang: lang,
+          donor: {
+            firstName: d.firstName.trim(),
+            lastName: d.lastName.trim(),
+            address: d.address.trim(),
+            postalCode: d.postalCode.trim(),
+            city: d.city.trim(),
+            email: d.email.trim(),
+            newsletter: !!state.newsletter
+          },
+          termsAccepted: true
+        })
       })
-      .catch(function () {
-        showError(t.connectionError);
-        state.submitting = false;
-        render();
+        .then(function (response) {
+          return response.json().then(function (payload) { return { ok: response.ok, payload: payload }; });
+        })
+        .then(function (result) {
+          if (!result.ok) {
+            var p = result.payload || {};
+            if (p.code === 'AMOUNT_TOO_HIGH') showError(fmt(t.amountTooHigh, { max: p.max }));
+            else if (p.code === 'AMOUNT_TOO_LOW') showError(fmt(t.atLeastAmount, { min: p.min }));
+            else showError(t.unableToStartPayment);
+            state.submitting = false;
+            render();
+            return;
+          }
+          if (result.payload && result.payload.redirectUrl) {
+            window.location.href = result.payload.redirectUrl;
+            return; // si resta in stato "Reindirizzamento…"
+          }
+          showError(t.noRedirectUrl);
+          state.submitting = false;
+          render();
+        })
+        .catch(function () {
+          showError(t.connectionError);
+          state.submitting = false;
+          render();
+        });
+    }
+
+    // ---- EVENTI -------------------------------------------------------------
+    detailKeys.forEach(function (k) {
+      el[k].addEventListener('input', function (e) {
+        state.details[k] = e.target.value;
+        saveDraft();
       });
+    });
+    el.amount.addEventListener('input', function (e) {
+      state.customAmount = e.target.value;
+      state.selectedAmount = null;
+      saveDraft();
+      render();
+    });
+    el.newsletter.addEventListener('change', function (e) { state.newsletter = e.target.checked; saveDraft(); });
+    el.terms.addEventListener('change', function (e) { state.termsAccepted = e.target.checked; });
+    el.form.addEventListener('submit', submit);
+
+    // Link T&C: salva la bozza e apre in una nuova scheda anche dove target="_blank" viene ignorato.
+    el.termsLink.addEventListener('click', function (e) {
+      saveDraft();
+      var w = window.open(el.termsLink.href, '_blank', 'noopener');
+      if (w) e.preventDefault();
+    });
+
+    start();
   }
 
-  // ---- EVENTI ---------------------------------------------------------------
-  detailKeys.forEach(function (k) {
-    el[k].addEventListener('input', function (e) {
-      state.details[k] = e.target.value;
-      saveDraft();
+  // Si avvia solo se la pagina contiene <div data-oa-donation-form>. Sulle altre pagine
+  // (es. "Danke") lo script serve solo a svuotare la bozza, gia' fatto sopra.
+  if (rootEl) {
+    init();
+  } else if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', function () {
+      rootEl = document.querySelector('[data-oa-donation-form]');
+      if (rootEl) init();
     });
-  });
-  el.amount.addEventListener('input', function (e) {
-    state.customAmount = e.target.value;
-    state.selectedAmount = null;
-    saveDraft();
-    render();
-  });
-  el.newsletter.addEventListener('change', function (e) { state.newsletter = e.target.checked; saveDraft(); });
-  el.terms.addEventListener('change', function (e) { state.termsAccepted = e.target.checked; });
-  el.close.addEventListener('click', close);
-  el.form.addEventListener('submit', submit);
-
-  // Link T&C: salva la bozza e apre in una nuova scheda anche dove target="_blank" viene ignorato.
-  el.termsLink.addEventListener('click', function (e) {
-    saveDraft();
-    var w = window.open(el.termsLink.href, '_blank', 'noopener');
-    if (w) e.preventDefault();
-  });
-
-  document.addEventListener('keydown', function (e) {
-    if (!isOpen) return;
-    if (e.key === 'Escape') { close(); return; }
-    if (e.key !== 'Tab') return;
-    // Il focus resta dentro il popup.
-    var focusables = overlay.querySelectorAll('button:not([disabled]),input,a[href]');
-    if (!focusables.length) return;
-    var first = focusables[0], last = focusables[focusables.length - 1];
-    if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
-    else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
-  });
-
-  // Apertura: attributo data-oa-donate sugli elementi della pagina Webflow...
-  document.addEventListener('click', function (e) {
-    var target = e.target.closest ? e.target.closest('[data-oa-donate]') : null;
-    if (!target) return;
-    e.preventDefault();
-    open(target.getAttribute('data-oa-donate'));
-  });
-  // ...oppure evento personalizzato.
-  window.addEventListener('oa:open-popup', function (event) {
-    var id = event.detail && event.detail.id;
-    if (typeof id !== 'string') return;
-    if (id === 'donation') open(null);
-    else if (id.indexOf('donation-') === 0) open(id.slice('donation-'.length));
-  });
+  }
 })();
