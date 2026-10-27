@@ -20,7 +20,7 @@
  *   data-terms-it   URL pagina T&C in italiano    (default: /it/agb)
  *   data-privacy-de/-en/-it  URL pagina Datenschutz (default: /de|en|it/datenschutz)
  *   data-back-de/-en/-it  URL della pagina con i piani di donazione (default: /de|en|it/spenden),
- *                         usato dal link "Cambia piano" accanto al titolo del form
+ *                         usato dal link "Cambia livello" accanto al titolo del form
  *   I link ai termini e alla privacy aprono il testo SOTTO il form (letto dalla pagina Webflow,
  *   elemento .section-txt, stesso dominio); in tutti gli altri casi si apre la pagina in una nuova scheda.
  *   Gli stessi attributi si possono mettere sul <div data-oa-donation-form>.
@@ -87,8 +87,8 @@
   var LABELS = {
     it: {
       proceedDonationPayment: 'Procedi al pagamento della donazione',
-      plan: 'Piano',
-      changePlan: 'Cambia piano',
+      plan: 'Livello',
+      changePlan: 'Cambia livello',
       yourDetails: 'I tuoi dati',
       firstName: 'Nome',
       lastName: 'Cognome',
@@ -126,8 +126,8 @@
     },
     en: {
       proceedDonationPayment: 'Proceed to donation payment',
-      plan: 'Plan',
-      changePlan: 'Change plan',
+      plan: 'Tier',
+      changePlan: 'Change tier',
       yourDetails: 'Your details',
       firstName: 'First name',
       lastName: 'Last name',
@@ -138,9 +138,9 @@
       chooseContribution: 'Choose your contribution',
       customAmount: 'Custom amount',
       minimumForSelection: 'Minimum for this selection',
-      tierFrom: '{tier} level from CHF {min}',
-      tierUp: 'With this donation you move up to the {tier} level and receive all of its benefits.',
-      tierDown: 'With this amount your donation falls under the {tier} level.',
+      tierFrom: '{tier} tier from CHF {min}',
+      tierUp: 'With this donation you move up to the {tier} tier and receive all of its benefits.',
+      tierDown: 'With this amount your donation falls under the {tier} tier.',
       tierEcho: 'With this amount your donation becomes ECHO, a contribution of your own choosing.',
       newsletterPrefix: 'I agree to receive the Orchestra Aurea newsletter and I have read the ',
       privacyLink: 'Privacy Policy',
@@ -165,8 +165,8 @@
     },
     de: {
       proceedDonationPayment: 'Zur Spendenzahlung fortfahren',
-      plan: 'Plan',
-      changePlan: 'Plan ändern',
+      plan: 'Stufe',
+      changePlan: 'Stufe ändern',
       yourDetails: 'Ihre Angaben',
       firstName: 'Vorname',
       lastName: 'Nachname',

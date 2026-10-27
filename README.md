@@ -28,7 +28,7 @@ test/local-preview.html   anteprima locale, solo grafica (il pagamento non parte
 Livelli: il livello dipende dall'importo, non dal link da cui si parte. Da CHF 100 PULSE,
 da 500 FLOW, da 1000 RESONANCE, sotto 100 ECHO (minimo assoluto CHF 1). Se l'utente scrive nel
 campo libero un importo di un altro livello, sotto il campo compare un avviso ("passi al livello
-FLOW…", "la donazione diventa ECHO…") e l'etichetta "Piano" cambia. Il server ricalcola il
+FLOW…", "la donazione diventa ECHO…") e l'etichetta "Livello" (DE "Stufe", EN "Tier", come nella pagina Spenden) cambia. Il server ricalcola il
 livello dall'importo e ignora quello inviato dal browser. Le soglie stanno in due punti, da
 tenere uguali: `public/donation-form.js` e `api/session.js`.
 
