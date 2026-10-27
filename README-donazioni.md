@@ -57,6 +57,11 @@ Gli URL dei termini vanno sostituiti con quelli reali delle tre pagine. Se le tr
 usano lo stesso indirizzo si possono togliere. La pagina "Danke" deve caricare lo stesso
 script (serve a svuotare la bozza dopo un pagamento riuscito).
 
+**Titolo del form e link "Cambia piano"**: il titolo ("Piano: FLOW") sta sopra il riquadro colorato,
+con accanto il link per tornare alla pagina Spenden e scegliere un altro piano (`/de|en|it/spenden`
+per default; si cambia con `data-back-de`, `data-back-en`, `data-back-it`). I dati gia' inseriti
+restano (bozza nel browser); l'importo no se il piano cambia.
+
 **Pagina "Danke"** (tre lingue): legge `?status=` dall'indirizzo e mostra il messaggio giusto
 (`success`, `incomplete`, `error`).
 

@@ -19,6 +19,8 @@
  *   data-terms-en   URL pagina T&C in inglese     (default: /en/agb)
  *   data-terms-it   URL pagina T&C in italiano    (default: /it/agb)
  *   data-privacy-de/-en/-it  URL pagina Datenschutz (default: /de|en|it/datenschutz)
+ *   data-back-de/-en/-it  URL della pagina con i piani di donazione (default: /de|en|it/spenden),
+ *                         usato dal link "Cambia piano" accanto al titolo del form
  *   I link ai termini e alla privacy aprono il testo SOTTO il form (letto dalla pagina Webflow,
  *   elemento .section-txt, stesso dominio); in tutti gli altri casi si apre la pagina in una nuova scheda.
  *   Gli stessi attributi si possono mettere sul <div data-oa-donation-form>.
@@ -59,6 +61,11 @@
       en: attr('data-privacy-en') || '/en/datenschutz',
       it: attr('data-privacy-it') || '/it/datenschutz'
     },
+    back: {
+      de: attr('data-back-de') || '/de/spenden',
+      en: attr('data-back-en') || '/en/spenden',
+      it: attr('data-back-it') || '/it/spenden'
+    },
     storageKey: 'oa_donation_draft'
   };
 
@@ -81,6 +88,7 @@
     it: {
       proceedDonationPayment: 'Procedi al pagamento della donazione',
       plan: 'Piano',
+      changePlan: 'Cambia piano',
       yourDetails: 'I tuoi dati',
       firstName: 'Nome',
       lastName: 'Cognome',
@@ -119,6 +127,7 @@
     en: {
       proceedDonationPayment: 'Proceed to donation payment',
       plan: 'Plan',
+      changePlan: 'Change plan',
       yourDetails: 'Your details',
       firstName: 'First name',
       lastName: 'Last name',
@@ -157,6 +166,7 @@
     de: {
       proceedDonationPayment: 'Zur Spendenzahlung fortfahren',
       plan: 'Plan',
+      changePlan: 'Plan ändern',
       yourDetails: 'Ihre Angaben',
       firstName: 'Vorname',
       lastName: 'Nachname',
@@ -255,11 +265,19 @@
   var CSS = '' +
     '.oa-root{--oa-ink:var(--color--ink,#1c1a17);--oa-gold:var(--color--gold-deep,#8a6a2a);' +
     '--oa-sand:var(--color--sand,#ebddc1);--oa-paper:var(--color--paper,#fff);--oa-bg:var(--color--paper-warm,#f9f5ec);--oa-error:#8f2d1f;' +
-    'box-sizing:border-box;width:100%;max-width:40rem;margin:0 auto;padding:clamp(1rem,4vw,2rem);border-radius:8px;background:var(--oa-bg);color:var(--oa-ink);' +
+    '--oa-pad:clamp(1rem,4vw,2rem);' +
+    'box-sizing:border-box;width:100%;max-width:40rem;margin:0 auto;color:var(--oa-ink);' +
     'font-family:var(--font-family,"Switzer Variable",Helvetica,Arial,sans-serif);' +
     'font-size:var(--_typography---text-body--body-size,1rem);line-height:var(--_typography---line-height--lh-body,1.5)}' +
     '.oa-root *{box-sizing:border-box}' +
-    '.oa-root .oa-label{margin:0 0 1.5rem;color:var(--oa-gold);font-size:var(--_typography---text-fixed-size--text-label,1rem);' +
+    // Titolo del form (piano + link per cambiarlo) sul fondo della pagina; sotto, il riquadro colorato.
+    // Lo spazio tra titolo e riquadro e' uguale al padding interno del riquadro.
+    '.oa-root .oa-head{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:baseline;gap:.5rem 1.5rem;margin:0 0 var(--oa-pad)}' +
+    '.oa-root .oa-card{padding:var(--oa-pad);border-radius:8px;background:var(--oa-bg)}' +
+    '.oa-root .oa-back{color:var(--oa-gold);font-size:1rem;line-height:1.3;text-decoration:underline;text-underline-offset:.2em}' +
+    '.oa-root .oa-back::before{content:"\\2190\\00a0";text-decoration:none;display:inline-block}' +
+    '.oa-root .oa-back:hover{color:var(--oa-ink)}' +
+    '.oa-root .oa-label{margin:0;color:var(--oa-gold);font-size:var(--_typography---text-fixed-size--text-label,1rem);' +
     'line-height:1.3;font-weight:500;letter-spacing:.05em;text-transform:uppercase}' +
     '.oa-root .oa-section-title{margin:0 0 .75rem;color:var(--oa-gold);font-size:var(--_typography---text-fixed-size--text-label,1rem);' +
     'line-height:1.3;font-weight:500;letter-spacing:.05em;text-transform:uppercase}' +
@@ -310,8 +328,12 @@
 
   // ---- MARKUP ---------------------------------------------------------------
   var MARKUP = '' +
-    '<form class="oa-form" id="oa-form" novalidate autocomplete="on">' +
+    '<div class="oa-head">' +
       '<p class="oa-label" id="oa-subtitle"></p>' +
+      '<a class="oa-back" id="oa-back" href="#"></a>' +
+    '</div>' +
+    '<div class="oa-card">' +
+    '<form class="oa-form" id="oa-form" novalidate autocomplete="on">' +
       // 1. Importo
       '<section class="oa-section">' +
         '<h2 class="oa-section-title" id="oa-amount-title"></h2>' +
@@ -351,7 +373,8 @@
       '</div>' +
       '<div class="oa-doc-body" id="oa-doc-body"></div>' +
       '<button type="button" class="oa-doc-close" id="oa-doc-close-bottom"></button>' +
-    '</section>';
+    '</section>' +
+    '</div>';
 
   // ---- AVVIO ----------------------------------------------------------------
   function init() {
@@ -365,7 +388,7 @@
 
     function $(id) { return rootEl.querySelector('#' + id); }
     var el = {
-      form: $('oa-form'), subtitle: $('oa-subtitle'),
+      form: $('oa-form'), subtitle: $('oa-subtitle'), back: $('oa-back'),
       amountTitle: $('oa-amount-title'), presets: $('oa-presets'), amount: $('oa-amount'), minNote: $('oa-min-note'),
       detailsTitle: $('oa-details-title'),
       firstName: $('oa-firstName'), lastName: $('oa-lastName'), address: $('oa-address'),
@@ -381,6 +404,8 @@
 
     // Testi statici (cambiano solo con la lingua)
     el.form.setAttribute('aria-label', t.proceedDonationPayment);
+    el.back.textContent = t.changePlan;
+    el.back.setAttribute('href', CONFIG.back[lang]);
     el.amountTitle.textContent = t.chooseContribution;
     el.amount.setAttribute('placeholder', t.customAmount);
     el.amount.setAttribute('aria-label', t.customAmount);
