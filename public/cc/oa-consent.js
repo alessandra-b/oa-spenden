@@ -5,6 +5,7 @@
  * Categorie
  *   necessary  Notwendig    sempre attiva (scelta sui cookie, lingua)
  *   analytics  Statistik    Google Analytics 4 (G-KH0199FRB4)
+ *   marketing  Marketing    Meta Pixel (ID 2581265762333821), misura le campagne su Facebook e Instagram
  *   media      Medien       video YouTube (caricati solo dopo il consenso)
  *
  * Come funziona Google Analytics
@@ -28,7 +29,7 @@
 (function () {
   'use strict';
 
-  var REVISION = 1;
+  var REVISION = 2; // 2: aggiunto Meta Pixel (Marketing)
 
   function lang() {
     var l = (document.documentElement.getAttribute('lang') || '').slice(0, 2).toLowerCase();
@@ -46,7 +47,7 @@
   var TEXTS = {
     de: {
       title: 'Cookies auf dieser Website',
-      desc: 'Wir verwenden notwendige Cookies, damit die Website funktioniert. Mit Ihrer Zustimmung nutzen wir zusätzlich Google Analytics, um zu verstehen, wie die Website genutzt wird, und zeigen Videos von YouTube an. Ihre Wahl können Sie jederzeit unter «Cookie-Einstellungen» im Footer ändern.',
+      desc: 'Wir verwenden notwendige Cookies, damit die Website funktioniert. Mit Ihrer Zustimmung nutzen wir zusätzlich Google Analytics, um zu verstehen, wie die Website genutzt wird, und den Meta Pixel, um die Wirkung unserer Werbung auf Facebook und Instagram zu messen. Ausserdem zeigen wir Videos von YouTube an. Ihre Wahl können Sie jederzeit unter «Cookie-Einstellungen» im Footer ändern.',
       acceptAll: 'Alle akzeptieren',
       reject: 'Ablehnen',
       settings: 'Einstellungen',
@@ -59,6 +60,9 @@
       necDesc: 'Diese Cookies braucht die Website, um zu funktionieren, zum Beispiel um Ihre Cookie-Auswahl zu speichern. Sie lassen sich nicht deaktivieren.',
       anaTitle: 'Statistik',
       anaDesc: 'Google Analytics hilft uns zu verstehen, welche Seiten besucht werden und wie Besucherinnen und Besucher die Website finden. Die Daten werden an Google (USA) übermittelt und nach 2 Monaten gelöscht.',
+      mktTitle: 'Marketing',
+      mktDesc: 'Der Meta Pixel misst, ob Besucherinnen und Besucher über unsere Werbung auf Facebook oder Instagram zu uns gefunden haben. Die Daten werden an Meta (Irland und USA) übermittelt.',
+      fbCookie: 'Erkennt Besucherinnen und Besucher für die Messung von Werbung', fbcCookie: 'Speichert den Klick auf eine Anzeige', months3: '3 Monate',
       medTitle: 'Medien',
       medDesc: 'Videos von YouTube werden erst geladen, wenn Sie zustimmen. YouTube (Google) kann dabei Cookies setzen und Daten in die USA übermitteln.',
       moreTitle: 'Weitere Informationen',
@@ -72,7 +76,7 @@
     },
     en: {
       title: 'Cookies on this website',
-      desc: 'We use necessary cookies to make the website work. With your consent we also use Google Analytics to understand how the website is used, and we show videos from YouTube. You can change your choice at any time under “Cookie settings” in the footer.',
+      desc: 'We use necessary cookies to make the website work. With your consent we also use Google Analytics to understand how the website is used, and the Meta Pixel to measure the effect of our advertising on Facebook and Instagram. We also show videos from YouTube. You can change your choice at any time under “Cookie settings” in the footer.',
       acceptAll: 'Accept all',
       reject: 'Reject',
       settings: 'Settings',
@@ -85,6 +89,9 @@
       necDesc: 'The website needs these cookies to work, for example to remember your cookie choice. They cannot be switched off.',
       anaTitle: 'Statistics',
       anaDesc: 'Google Analytics helps us understand which pages are visited and how people find the website. The data is sent to Google (USA) and deleted after 2 months.',
+      mktTitle: 'Marketing',
+      mktDesc: 'The Meta Pixel measures whether visitors found us through our advertising on Facebook or Instagram. The data is sent to Meta (Ireland and USA).',
+      fbCookie: 'Recognises visitors to measure advertising', fbcCookie: 'Stores the click on an ad', months3: '3 months',
       medTitle: 'Media',
       medDesc: 'YouTube videos are only loaded with your consent. YouTube (Google) may set cookies and send data to the USA.',
       moreTitle: 'More information',
@@ -98,7 +105,7 @@
     },
     it: {
       title: 'Cookie su questo sito',
-      desc: 'Usiamo cookie necessari al funzionamento del sito. Con il tuo consenso usiamo anche Google Analytics per capire come viene utilizzato il sito e mostriamo video da YouTube. Puoi cambiare la tua scelta in qualsiasi momento da «Impostazioni cookie» nel footer.',
+      desc: 'Usiamo cookie necessari al funzionamento del sito. Con il tuo consenso usiamo anche Google Analytics per capire come viene utilizzato il sito e il Meta Pixel per misurare l’effetto della nostra pubblicità su Facebook e Instagram. Mostriamo inoltre video da YouTube. Puoi cambiare la tua scelta in qualsiasi momento da «Impostazioni cookie» nel footer.',
       acceptAll: 'Accetta tutti',
       reject: 'Rifiuta',
       settings: 'Impostazioni',
@@ -111,6 +118,9 @@
       necDesc: 'Il sito ha bisogno di questi cookie per funzionare, per esempio per ricordare la tua scelta sui cookie. Non si possono disattivare.',
       anaTitle: 'Statistiche',
       anaDesc: 'Google Analytics ci aiuta a capire quali pagine vengono visitate e come le persone trovano il sito. I dati vengono trasmessi a Google (USA) e cancellati dopo 2 mesi.',
+      mktTitle: 'Marketing',
+      mktDesc: 'Il Meta Pixel misura se i visitatori ci hanno trovato tramite la nostra pubblicità su Facebook o Instagram. I dati vengono trasmessi a Meta (Irlanda e USA).',
+      fbCookie: 'Riconosce i visitatori per misurare la pubblicità', fbcCookie: 'Memorizza il clic su un annuncio', months3: '3 mesi',
       medTitle: 'Media',
       medDesc: 'I video di YouTube vengono caricati solo con il tuo consenso. YouTube (Google) può impostare cookie e trasmettere dati negli USA.',
       moreTitle: 'Maggiori informazioni',
@@ -160,6 +170,18 @@
               body: [
                 { name: '_ga', domain: 'Google Analytics', desc: t.gaCookie, exp: t.years2 },
                 { name: '_ga_*', domain: 'Google Analytics', desc: t.gaCookie2, exp: t.years2 }
+              ]
+            }
+          },
+          {
+            title: t.mktTitle,
+            description: t.mktDesc,
+            linkedCategory: 'marketing',
+            cookieTable: {
+              headers: { name: t.colName, domain: t.colDomain, desc: t.colDesc, exp: t.colExp },
+              body: [
+                { name: '_fbp', domain: 'Meta Pixel', desc: t.fbCookie, exp: t.months3 },
+                { name: '_fbc', domain: 'Meta Pixel', desc: t.fbcCookie, exp: t.months3 }
               ]
             }
           },
@@ -266,6 +288,12 @@
         analytics: {
           autoClear: {
             cookies: [{ name: /^_ga/ }],
+            reloadPage: true
+          }
+        },
+        marketing: {
+          autoClear: {
+            cookies: [{ name: /^_fb[pc]$/ }],
             reloadPage: true
           }
         },
