@@ -13,9 +13,13 @@
  *   Se il visitatore revoca il consenso, i cookie _ga vengono cancellati e la pagina si ricarica.
  *
  * Come funzionano i video
- *   Al posto dell'iframe YouTube si usa un div:
- *     <div data-service="youtube" data-id="ID_DEL_VIDEO" data-title="Titolo" data-autoscale></div>
- *   (facoltativo: data-thumbnail="URL immagine" con un'immagine caricata in Webflow)
+ *   In Webflow si usa il component «Video» (attributo data-oa-video sul contenitore), con dentro:
+ *     [data-oa-video-link]   testo: link YouTube (youtu.be/..., watch?v=..., shorts/...) oppure solo l'ID
+ *     [data-oa-video-title]  testo: titolo del video (facoltativo)
+ *     [data-oa-video-thumb]  immagine di anteprima (facoltativa)
+ *   Lo script li trasforma in <div data-service="youtube" ...> per iframemanager.
+ *   Senza immagine propria, l'anteprima arriva da spenden.orchestra-aurea.ch/api/yt-thumb,
+ *   che la scarica da YouTube lato server: il browser del visitatore non contatta Google.
  *   Il video si carica solo con il consenso Medien, oppure con un clic sul pulsante del video.
  *
  * Testi: oggetto TEXTS qui sotto, una voce per lingua. La lingua viene presa da <html lang>.
@@ -168,9 +172,46 @@
 
   /* ---------- Video (iframemanager) ---------- */
   var im = window.iframemanager ? window.iframemanager() : null;
+  var THUMB_PROXY = 'https://spenden.orchestra-aurea.ch/api/yt-thumb?id=';
+
+  // Estrae l'ID da qualsiasi link YouTube, o accetta l'ID nudo (11 caratteri)
+  function youtubeId(v) {
+    v = (v || '').trim();
+    if (/^[A-Za-z0-9_-]{11}$/.test(v)) return v;
+    var m = v.match(/(?:youtu\.be\/|youtube(?:-nocookie)?\.com\/(?:watch\?(?:.*&)?v=|embed\/|shorts\/|live\/|v\/))([A-Za-z0-9_-]{11})/);
+    return m ? m[1] : null;
+  }
+
+  // Trasforma i component «Video» di Webflow nei div che iframemanager sa gestire
+  function buildVideos() {
+    var list = document.querySelectorAll('[data-oa-video]:not([data-oa-ready])');
+    for (var i = 0; i < list.length; i++) {
+      var box = list[i];
+      box.setAttribute('data-oa-ready', '1');
+      var linkEl = box.querySelector('[data-oa-video-link]');
+      var id = youtubeId(linkEl ? linkEl.textContent : box.getAttribute('data-oa-video'));
+      if (!id) continue;
+      var titleEl = box.querySelector('[data-oa-video-title]');
+      var imgEl = box.querySelector('[data-oa-video-thumb]');
+      var thumb = imgEl && imgEl.getAttribute('src');
+      if (!thumb || /placeholder/i.test(thumb)) thumb = THUMB_PROXY + id;
+
+      var div = document.createElement('div');
+      div.setAttribute('data-service', 'youtube');
+      div.setAttribute('data-id', id);
+      div.setAttribute('data-thumbnail', thumb);
+      div.setAttribute('data-autoscale', '');
+      var title = titleEl ? titleEl.textContent.trim() : '';
+      if (title) div.setAttribute('data-title', title);
+
+      while (box.firstChild) box.removeChild(box.firstChild);
+      box.appendChild(div);
+    }
+  }
 
   function runVideos() {
     if (!im) return;
+    buildVideos();
     var v = {};
     ['de', 'en', 'it'].forEach(function (l) {
       v[l] = { notice: TEXTS[l].vNotice, loadBtn: TEXTS[l].vLoad, loadAllBtn: TEXTS[l].vLoadAll };

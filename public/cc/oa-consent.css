@@ -103,3 +103,10 @@ div[data-service] .cll .c-la-b { font-size: 1rem; }
 div[data-service] .cll .c-tl { font-size: 1.25rem; font-weight: 500; }
 div[data-service] .cll .c-l-b,
 div[data-service] .cll .c-la-b { border-radius: 0; box-shadow: none; }
+
+/* component «Video»: segnaposto 16:9 mentre lo script prepara il riquadro */
+[data-oa-video] { position: relative; width: 100%; aspect-ratio: 16 / 9; background: #1c1a17; }
+[data-oa-video] > [data-oa-video-link],
+[data-oa-video] > [data-oa-video-title],
+[data-oa-video] > [data-oa-video-thumb] { display: none; }
+[data-oa-video] > div[data-service] { position: absolute; inset: 0; width: 100%; height: 100%; }
