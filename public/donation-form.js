@@ -97,7 +97,8 @@
       city: 'Città',
       email: 'Email',
       chooseContribution: 'Scegli il tuo contributo',
-      customAmount: 'Importo personalizzato',
+      customAmount: 'Oppure scrivi il tuo importo',
+      customAmountFree: 'Scrivi il tuo importo',
       minimumForSelection: 'Minimo per questa selezione',
       tierFrom: 'Livello {tier} da CHF {min}',
       tierUp: 'Con questa donazione passi al livello {tier} e hai diritto a tutti i suoi vantaggi.',
@@ -115,6 +116,7 @@
       termsAndConditions: 'Termini e Condizioni',
       completeFields: 'Compila tutti i campi obbligatori prima di continuare.',
       validEmail: 'Inserisci un indirizzo email valido.',
+      noAmountSelected: 'Non hai selezionato nessun importo: scegli il tuo contributo.',
       atLeastAmount: 'Inserisci almeno CHF {min}.',
       amountTooHigh: 'Per importi superiori a CHF {max} contattaci direttamente.',
       acceptTermsError: 'Accetta i Termini e Condizioni prima di procedere.',
@@ -136,7 +138,8 @@
       city: 'City',
       email: 'Email',
       chooseContribution: 'Choose your contribution',
-      customAmount: 'Custom amount',
+      customAmount: 'Or enter your own amount',
+      customAmountFree: 'Enter your amount',
       minimumForSelection: 'Minimum for this selection',
       tierFrom: '{tier} tier from CHF {min}',
       tierUp: 'With this donation you move up to the {tier} tier and receive all of its benefits.',
@@ -154,6 +157,7 @@
       termsAndConditions: 'Terms & Conditions',
       completeFields: 'Please complete all required fields before continuing.',
       validEmail: 'Please enter a valid email address.',
+      noAmountSelected: 'You haven\'t selected an amount yet. Please choose your contribution.',
       atLeastAmount: 'Please enter at least CHF {min}.',
       amountTooHigh: 'For amounts above CHF {max} please contact us directly.',
       acceptTermsError: 'Please accept the Terms & Conditions before proceeding.',
@@ -175,7 +179,8 @@
       city: 'Stadt',
       email: 'E-Mail',
       chooseContribution: 'Wählen Sie Ihren Beitrag',
-      customAmount: 'Betrag eingeben',
+      customAmount: 'Oder eigenen Betrag eingeben',
+      customAmountFree: 'Betrag eingeben',
       minimumForSelection: 'Mindestbetrag für diese Auswahl',
       tierFrom: 'Stufe {tier} ab CHF {min}',
       tierUp: 'Mit diesem Betrag gelangen Sie in die Stufe {tier} und erhalten alle ihre Vorteile.',
@@ -193,6 +198,7 @@
       termsAndConditions: 'Allgemeinen Geschäftsbedingungen',
       completeFields: 'Bitte füllen Sie alle Pflichtfelder aus, bevor Sie fortfahren.',
       validEmail: 'Bitte geben Sie eine gültige E-Mail-Adresse ein.',
+      noAmountSelected: 'Sie haben noch keinen Betrag ausgewählt. Bitte wählen Sie Ihren Beitrag.',
       atLeastAmount: 'Bitte geben Sie einen Betrag von mindestens CHF {min} ein.',
       amountTooHigh: 'Für Beträge über CHF {max} kontaktieren Sie uns bitte direkt.',
       acceptTermsError: 'Bitte akzeptieren Sie die Allgemeinen Geschäftsbedingungen, bevor Sie fortfahren.',
@@ -293,6 +299,10 @@
     'background:var(--oa-paper);color:var(--oa-ink);font:inherit;font-size:1rem;line-height:1.4;-webkit-appearance:none;appearance:none}' +
     '.oa-root .oa-input::placeholder{color:var(--oa-ink);opacity:.6}' +
     '.oa-root .oa-amount-input{font-weight:500}' +
+    '.oa-root .oa-amount-input{-moz-appearance:textfield}' +
+    '.oa-root .oa-amount-input::-webkit-outer-spin-button,.oa-root .oa-amount-input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}' +
+    '.oa-root .oa-amount-input::placeholder{color:var(--oa-gold);opacity:1;font-size:.9375rem;font-weight:400;letter-spacing:.05em;text-transform:uppercase}' +
+    '@media (max-width:480px){.oa-root .oa-amount-input::placeholder{font-size:.8125rem;letter-spacing:.03em}}' +
     '.oa-root .oa-fields{display:grid;gap:.75rem}' +
     '.oa-root .oa-row{display:grid;grid-template-columns:1fr 2fr;gap:.75rem}' +
     '.oa-root .oa-note{margin:.75rem 0 0;color:var(--oa-ink);font-size:1rem;line-height:1.5}' +
@@ -407,8 +417,6 @@
     el.back.textContent = t.changePlan;
     el.back.setAttribute('href', CONFIG.back[lang]);
     el.amountTitle.textContent = t.chooseContribution;
-    el.amount.setAttribute('placeholder', t.customAmount);
-    el.amount.setAttribute('aria-label', t.customAmount);
     el.detailsTitle.textContent = t.yourDetails;
     detailKeys.forEach(function (k) {
       el[k].setAttribute('placeholder', t[k]);
@@ -474,6 +482,7 @@
         var btn = document.createElement('button');
         btn.type = 'button';
         btn.className = 'oa-preset' + (state.selectedAmount === value ? ' oa-selected' : '');
+        btn.setAttribute('aria-pressed', state.selectedAmount === value ? 'true' : 'false');
         var a = document.createElement('span'); a.textContent = 'CHF';
         var b = document.createElement('span'); b.textContent = String(value);
         btn.appendChild(a); btn.appendChild(b);
@@ -504,12 +513,16 @@
       var eff = effectiveLevel();
       el.subtitle.textContent = t.plan + ': ' + eff;
       el.amount.min = String(MIN_AMOUNT);
+      // senza le cifre proposte (livello libero) "Oppure" non avrebbe senso
+      var amountLabel = LEVELS[state.level].free ? t.customAmountFree : t.customAmount;
+      el.amount.setAttribute('placeholder', amountLabel);
+      el.amount.setAttribute('aria-label', amountLabel);
       el.minNote.textContent = tierNote(eff);
       el.minNote.classList.toggle('oa-tier-change', eff !== state.level);
       renderPresets();
       el.pay.textContent = state.submitting
         ? t.redirecting
-        : t.proceedPayment + ' CHF ' + (currentAmount() || LEVELS[state.level].min);
+        : t.proceedPayment + (currentAmount() > 0 ? ' CHF ' + currentAmount() : '');
       el.pay.disabled = state.submitting;
     }
 
@@ -558,8 +571,12 @@
       var d = state.details;
 
       if (!(amount >= MIN_AMOUNT)) {
-        showError(fmt(t.atLeastAmount, { min: MIN_AMOUNT }));
-        el.amount.focus();
+        // Nessuna cifra scelta (ne' preset ne' campo libero) -> invito a scegliere; cifra troppo bassa -> minimo.
+        var nothingChosen = state.selectedAmount == null && !String(state.customAmount).trim();
+        showError(nothingChosen ? t.noAmountSelected : fmt(t.atLeastAmount, { min: MIN_AMOUNT }));
+        // il focus va sulla prima cifra proposta (o sul campo libero, nel livello senza cifre proposte)
+        var firstPreset = el.presets.querySelector('.oa-preset');
+        (nothingChosen && firstPreset ? firstPreset : el.amount).focus();
         return;
       }
       for (var i = 0; i < detailKeys.length; i++) {
@@ -643,6 +660,7 @@
       state.customAmount = e.target.value;
       state.selectedAmount = null;
       saveDraft();
+      clearError();
       render();
     });
     el.newsletter.addEventListener('change', function (e) { state.newsletter = e.target.checked; saveDraft(); });
