@@ -1,0 +1,105 @@
+/* Orchestra Aurea: aspetto del banner cookie e dei video in attesa di consenso.
+ * Palette e font del sito. Nessun testo sotto 1rem.
+ */
+#cc-main {
+  --cc-font-family: "Switzer Variable", "Switzer", system-ui, sans-serif;
+  --cc-modal-border-radius: 0;
+  --cc-btn-border-radius: 0;
+  --cc-modal-margin: 1rem;
+  --cc-z-index: 2147483647;
+
+  --cc-bg: #f9f5ec;                 /* paper warm */
+  --cc-primary-color: #1c1a17;      /* ink */
+  --cc-secondary-color: #1c1a17;
+  --cc-link-color: #1c1a17;
+
+  /* stessi pulsanti per Accetta e Rifiuta: nessuna scelta spinta */
+  --cc-btn-primary-bg: #1c1a17;
+  --cc-btn-primary-color: #f9f5ec;
+  --cc-btn-primary-border-color: #1c1a17;
+  --cc-btn-primary-hover-bg: #cea146;          /* gold */
+  --cc-btn-primary-hover-color: #1c1a17;
+  --cc-btn-primary-hover-border-color: #cea146;
+
+  --cc-btn-secondary-bg: transparent;
+  --cc-btn-secondary-color: #1c1a17;
+  --cc-btn-secondary-border-color: #1c1a17;
+  --cc-btn-secondary-hover-bg: #ebddc1;        /* sand */
+  --cc-btn-secondary-hover-color: #1c1a17;
+  --cc-btn-secondary-hover-border-color: #1c1a17;
+
+  --cc-separator-border-color: #e3d0aa;        /* sand deep */
+  --cc-toggle-on-bg: #1c1a17;
+  --cc-toggle-off-bg: #b9ab90;
+  --cc-toggle-on-knob-bg: #f9f5ec;
+  --cc-toggle-off-knob-bg: #f9f5ec;
+  --cc-toggle-enabled-icon-color: #1c1a17;
+  --cc-toggle-disabled-icon-color: #1c1a17;
+  --cc-toggle-readonly-bg: #e3d0aa;
+  --cc-toggle-readonly-knob-bg: #f9f5ec;
+  --cc-toggle-readonly-knob-icon-color: #1c1a17;
+
+  --cc-cookie-category-block-bg: #f4ecdc;
+  --cc-cookie-category-block-border: #e3d0aa;
+  --cc-cookie-category-block-hover-bg: #ebddc1;
+  --cc-cookie-category-block-hover-border: #e3d0aa;
+  --cc-cookie-category-expanded-block-bg: #f9f5ec;
+  --cc-cookie-category-expanded-block-hover-bg: #f4ecdc;
+  --cc-section-category-border: #e3d0aa;
+
+  --cc-footer-bg: #ebddc1;
+  --cc-footer-color: #1c1a17;
+  --cc-footer-border-color: #e3d0aa;
+  --cc-overlay-bg: rgba(28, 26, 23, 0.55);
+}
+
+/* minimo 1rem per tutti i testi (la libreria ne ha alcuni a 0.8em) */
+#cc-main { font-size: 1rem; }
+#cc-main .cm__desc,
+#cc-main .cm__btn,
+#cc-main .cm__link-group,
+#cc-main .cm__footer,
+#cc-main .pm__section-title,
+#cc-main .pm__section-desc-wrapper,
+#cc-main .pm__section-desc,
+#cc-main .pm__service-title,
+#cc-main .pm__section-table,
+#cc-main .pm__btn,
+#cc-main .pm__badge { font-size: 1rem; }
+#cc-main .cm__title,
+#cc-main .pm__title { font-size: 1.25rem; font-weight: 500; }
+
+#cc-main a { text-decoration: underline; text-underline-offset: 0.15em; }
+#cc-main a:hover { color: #cea146; }
+#cc-main .cm__btn,
+#cc-main .pm__btn { font-weight: 500; }
+
+/* focus visibile da tastiera */
+#cc-main button:focus-visible,
+#cc-main a:focus-visible {
+  outline: 2px solid #cea146;
+  outline-offset: 2px;
+}
+
+/* ---------- Video in attesa di consenso (iframemanager) ---------- */
+:root {
+  --im-font-family: "Switzer Variable", "Switzer", system-ui, sans-serif;
+  --im-bg: #1c1a17;                       /* ink: il riquadro sembra un'area video */
+  --im-color: #f9f5ec;
+  --im-link-color: #d6bb84;               /* gold light */
+  --im-link-hover-color: #f2a407;
+  --im-btn-bg: #cea146;                   /* gold */
+  --im-btn-color: #1c1a17;
+  --im-btn-hover-bg: #d6bb84;
+  --im-btn-s-bg: #f9f5ec;
+  --im-btn-s-color: #1c1a17;
+  --im-btn-s-hover-bg: #ebddc1;
+  --im-overlay-bg: linear-gradient(14deg, #1c1a17, rgba(206, 161, 70, 0.18));
+}
+div[data-service] { font-size: 1rem; width: 100%; }
+div[data-service] .cll .c-n-t,
+div[data-service] .cll .c-l-b,
+div[data-service] .cll .c-la-b { font-size: 1rem; }
+div[data-service] .cll .c-tl { font-size: 1.25rem; font-weight: 500; }
+div[data-service] .cll .c-l-b,
+div[data-service] .cll .c-la-b { border-radius: 0; box-shadow: none; }
