@@ -216,7 +216,8 @@
       var titleEl = box.querySelector('[data-oa-video-title]');
       var imgEl = box.querySelector('[data-oa-video-thumb]');
       var thumb = imgEl && imgEl.getAttribute('src');
-      if (!thumb || /placeholder/i.test(thumb)) thumb = THUMB_PROXY + id;
+      // segnaposto di Webflow, immagine predefinita del component o icone SVG: si usa l'anteprima di YouTube
+      if (!thumb || /placeholder|\.svg(\?|$)/i.test(thumb)) thumb = THUMB_PROXY + id;
 
       var div = document.createElement('div');
       div.setAttribute('data-service', 'youtube');
