@@ -9,6 +9,20 @@ const config = require('../lib/config');
 const brevo = require('../lib/brevo');
 const store = require('../lib/store');
 
+// Forma della chiave (mai la chiave): le chiavi API di Brevo iniziano con "xkeysib-",
+// quelle SMTP con "xsmtpsib-" e non funzionano con l'API.
+function keyShape(v) {
+    if (!v) return null;
+    const raw = String(v);
+    const t = raw.trim();
+    return {
+        type: t.startsWith('xkeysib-') ? 'API key (xkeysib-)' : t.startsWith('xsmtpsib-') ? 'SMTP key (xsmtpsib-): SBAGLIATA' : 'formato sconosciuto',
+        length: t.length,
+        spacesAround: raw !== t,
+        quotes: /^["']|["']$/.test(t)
+    };
+}
+
 const has = (name) => Boolean(process.env[name] && String(process.env[name]).trim());
 
 module.exports = async (req, res) => {
@@ -22,8 +36,11 @@ module.exports = async (req, res) => {
             MAIL_FROM_set: has('MAIL_FROM'),
             MAIL_TO_ADMIN_set: has('MAIL_TO_ADMIN'),
             MAIL_FROM_NEWSLETTER_set: has('MAIL_FROM_NEWSLETTER'),
-            BREVO_NEWSLETTER_LIST_ID_set: has('BREVO_NEWSLETTER_LIST_ID')
+            BREVO_NEWSLETTER_LIST_ID_set: has('BREVO_NEWSLETTER_LIST_ID'),
+            // solo i NOMI delle variabili del database, mai i valori
+            databaseVariables: Object.keys(process.env).filter((k) => /KV|REDIS|UPSTASH/i.test(k)).sort()
         },
+        brevoKeyShape: keyShape(process.env.BREVO_API_KEY),
         mail: {
             from: config.mail.from(),
             newsletterFrom: config.mail.newsletterFrom(),
