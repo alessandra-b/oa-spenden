@@ -16,13 +16,13 @@
   <main>
     <p><strong>PAGINA DI TEST</strong> (al posto della pagina "Danke" di Webflow)</p>
     <h1 id="msg"></h1>
-    <p><a href="/test-form.html">Torna al form di prova</a></p>
+    <p><a href="/test-form.html">Form donazioni di prova</a> &middot; <a href="/test-member.html">Form soci di prova</a></p>
   </main>
   <script>
     var q = new URLSearchParams(location.search);
     var status = q.get('status');
     var text = {
-      success: 'Pagamento riuscito: la donazione e\' stata incassata (status=success).',
+      success: 'Pagamento riuscito: incassato (status=success).',
       incomplete: 'Pagamento non completato (status=incomplete).',
       error: 'Qualcosa e\' andato storto (status=error).'
     };
@@ -31,5 +31,6 @@
     // Come sul sito vero, lo stesso script svuota la bozza dopo un pagamento riuscito.
   </script>
   <script src="/donation-form.js" defer></script>
+  <script src="/member-form.js" defer></script>
 </body>
 </html>

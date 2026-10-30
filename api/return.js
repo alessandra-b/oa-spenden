@@ -1,126 +1,79 @@
-// api/return.js
+// api/return.js — Saferpay riporta qui il browser dopo il pagamento.
 //
-// Saferpay riporta qui il browser dopo il pagamento. Questa function fa Assert
-// (verifica l'esito) e, se autorizzato, Capture (incassa), poi reindirizza
-// l'utente alla pagina "Danke" del sito Webflow, nella sua lingua. Non mostra
-// nulla lei stessa. Il dettaglio delle risposte Saferpay finisce nei log della
-// function (Vercel -> Deployments -> Functions -> Logs).
-//
-// Il token arriva dal cookie httpOnly impostato da api/session.js (Saferpay non
-// lo aggiunge all'URL di ritorno).
+// L'indirizzo contiene l'id dell'ordine firmato (?o=...&s=...), come consiglia Saferpay
+// (niente sessione via cookie per riconoscere chi torna). Il token Saferpay si ritrova nel
+// database (o, se il database non c'e', nel cookie di riserva).
+// Poi: Assert, Capture se serve, email (se la notifica non le ha gia' mandate), e redirect a
+//   donazioni -> RETURN_PAGE_URL          (pagina "Danke")
+//   soci      -> MEMBER_RETURN_PAGE_URL   (pagina "Willkommen")
+// con ?status=success|incomplete|error.
 
-const crypto = require('crypto');
+const config = require('../lib/config');
+const secure = require('../lib/secure');
+const saferpay = require('../lib/saferpay');
+const orders = require('../lib/orders');
+const { parseCookies, redirect, query } = require('../lib/http');
 
-// Pagina di destinazione. Puo' contenere {lang}, sostituito con de / en / it:
-//   https://www.orchestra-aurea.ch/{lang}/danke
-// Senza {lang} viene usato l'URL cosi' com'e'.
-const RETURN_PAGE_URL = process.env.RETURN_PAGE_URL || 'https://REPLACE-WITH-SITE-DOMAIN/{lang}/danke';
+// Vecchi cookie del flusso precedente (pagamenti avviati prima di questo aggiornamento).
+const LEGACY_CLEAR = [
+    'oa_donation_token=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0',
+    'oa_donation_lang=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0'
+];
 
-const LANGUAGES = ['de', 'en', 'it'];
-
-function getSaferpayBaseUrl() {
-    const mode = (process.env.SAFERPAY_ENV || 'test').toLowerCase();
-    return mode === 'live' ? 'https://www.saferpay.com/api' : 'https://test.saferpay.com/api';
-}
-
-function buildHeader() {
-    return {
-        SpecVersion: '1.51',
-        CustomerId: process.env.SAFERPAY_CUSTOMER_ID,
-        RequestId: crypto.randomUUID(),
-        RetryIndicator: 0
-    };
-}
-
-async function saferpayRequest(path, payload) {
-    const username = process.env.SAFERPAY_API_USERNAME;
-    const password = process.env.SAFERPAY_API_PASSWORD;
-    const authToken = Buffer.from(`${username}:${password}`).toString('base64');
-
-    const response = await fetch(`${getSaferpayBaseUrl()}${path}`, {
-        method: 'POST',
-        headers: {
-            Authorization: `Basic ${authToken}`,
-            'Content-Type': 'application/json; charset=utf-8',
-            Accept: 'application/json'
-        },
-        body: JSON.stringify(payload)
-    });
-
-    const data = await response.json().catch(() => null);
-
-    if (!response.ok || !data) {
-        const error = new Error((data && data.ErrorMessage) || 'Errore Saferpay');
-        error.raw = data;
-        throw error;
+async function legacy(req, res) {
+    const cookies = parseCookies(req.headers.cookie);
+    const token = cookies.oa_donation_token;
+    const lang = config.normalizeLang(cookies.oa_donation_lang);
+    if (!token) {
+        console.warn('Return: nessun ordine nell\'indirizzo e nessun cookie');
+        redirect(res, orders.landingUrl('donation', lang, 'error'), LEGACY_CLEAR);
+        return;
     }
-    return data;
-}
-
-function parseCookies(header) {
-    const cookies = {};
-    if (!header) return cookies;
-    header.split(';').forEach((pair) => {
-        const idx = pair.indexOf('=');
-        if (idx === -1) return;
-        cookies[pair.slice(0, idx).trim()] = decodeURIComponent(pair.slice(idx + 1).trim());
-    });
-    return cookies;
-}
-
-function redirectTo(res, status, lang) {
-    // I cookie hanno fatto il loro lavoro: li puliamo sempre, a prescindere dall'esito.
-    res.setHeader('Set-Cookie', [
-        'oa_donation_token=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0',
-        'oa_donation_lang=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0'
-    ]);
-    const base = RETURN_PAGE_URL.replace('{lang}', lang);
-    const url = `${base}${base.includes('?') ? '&' : '?'}status=${encodeURIComponent(status)}`;
-    res.writeHead(302, { Location: url });
-    res.end();
+    let status = 'error';
+    try {
+        const a = await saferpay.assert(token);
+        let s = a.Transaction && a.Transaction.Status;
+        if (s === 'AUTHORIZED' && a.Transaction.Id) {
+            const c = await saferpay.capture(a.Transaction.Id);
+            s = (c.Transaction && c.Transaction.Status) || c.Status;
+        }
+        status = s === 'CAPTURED' ? 'success' : s === 'PENDING' ? 'incomplete' : 'error';
+    } catch (err) {
+        console.error('Return (vecchio flusso):', err.name, err.message);
+        status = ['TRANSACTION_ABORTED', 'TRANSACTION_NOT_STARTED'].includes(err.name) ? 'incomplete' : 'error';
+    }
+    redirect(res, orders.landingUrl('donation', lang, status), LEGACY_CLEAR);
 }
 
 module.exports = async (req, res) => {
-    const cookies = parseCookies(req.headers.cookie);
-    const token = req.query.token || req.query.Token || cookies.oa_donation_token;
-    const lang = LANGUAGES.includes(cookies.oa_donation_lang) ? cookies.oa_donation_lang : 'de';
+    const q = query(req);
+    const orderId = String(q.o || '');
+    const sig = String(q.s || '');
 
-    if (!token) {
-        console.warn('Return endpoint: nessun token (ne in query ne in cookie)');
-        redirectTo(res, 'error', lang);
+    if (!orderId) { await legacy(req, res); return; }
+
+    const type = orders.typeFromOrderId(orderId);
+    if (!orders.isOrderId(orderId) || !secure.verify(orderId, sig)) {
+        console.warn('Return: id ordine o firma non validi', orderId);
+        redirect(res, orders.landingUrl(type, 'de', 'error'));
         return;
     }
 
+    const clear = [orders.clearCookie(orderId)];
+    let record = null;
     try {
-        const assertData = await saferpayRequest('/Payment/v1/PaymentPage/Assert', {
-            RequestHeader: buildHeader(),
-            Token: token
-        });
-        console.log('Assert response', JSON.stringify(assertData));
-
-        const status = assertData.Transaction && assertData.Transaction.Status;
-        const transactionId = assertData.Transaction && assertData.Transaction.Id;
-
-        let finalStatus = status;
-
-        if (status === 'AUTHORIZED' && transactionId) {
-            const captureData = await saferpayRequest('/Payment/v1/Transaction/Capture', {
-                RequestHeader: buildHeader(),
-                TransactionReference: { TransactionId: transactionId }
-            });
-            console.log('Capture response', JSON.stringify(captureData));
-            // La risposta di Capture e' "piatta": Status sta al livello principale.
-            finalStatus = (captureData.Transaction && captureData.Transaction.Status) || captureData.Status;
-        }
-
-        const isSuccess = finalStatus === 'CAPTURED';
-        const isIncomplete = finalStatus === 'PENDING' || finalStatus === 'WAITING' || finalStatus === 'INITIATED';
-
-        redirectTo(res, isSuccess ? 'success' : isIncomplete ? 'incomplete' : 'error', lang);
+        record = await orders.loadOrder(orderId, req);
     } catch (err) {
-        console.error('Return endpoint error', err.message, err.raw || '');
-        const message = err.message || '';
-        const isIncompleteError = message.includes('TRANSACTION_NOT_STARTED') || message.includes('TRANSACTION_ABORTED');
-        redirectTo(res, isIncompleteError ? 'incomplete' : 'error', lang);
+        console.error('Return: lettura ordine fallita', err.message);
     }
+    if (!record) {
+        console.error(`Return: ordine ${orderId} non trovato (database e cookie)`);
+        redirect(res, orders.landingUrl(type, 'de', 'error'), clear);
+        return;
+    }
+
+    const result = await orders.finalizeOrder({ orderId, record, req, source: 'return' });
+    const lang = result.ctx ? result.ctx.lang : 'de';
+    console.log(`Return ${orderId}: ${result.status}`);
+    redirect(res, orders.landingUrl(type, lang, result.status), clear);
 };

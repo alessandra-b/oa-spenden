@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="de-CH">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex,nofollow">
+  <title>TEST - member form</title>
+  <style>
+    :root{--font-family:"Switzer Variable";--color--paper:white;--color--paper-warm:#f9f5ec;--color--sand:#ebddc1;--color--sand-deep:#e3d0aa;--color--gold:#cea146;--color--gold-light:#d6bb84;--color--gold-deep:#8a6a2a;--color--ink:#1c1a17;}
+    body { margin:0; font-family:Helvetica, Arial, sans-serif; background:var(--color--paper); color:var(--color--ink); }
+    .banner { background:var(--color--ink); color:#fff; padding:.75rem 1rem; font-size:1rem; }
+    .banner a { color:var(--color--gold-light); margin-right:.75rem; }
+    .page { padding:3rem 1rem; }
+  </style>
+</head>
+<body>
+  <div class="banner">
+    PAGINA DI TEST (non e' il sito) &middot; lingua:
+    <a href="?lang=de">DE</a><a href="?lang=en">EN</a><a href="?lang=it">IT</a>
+  </div>
+  <div class="page"><div data-oa-member-form></div></div>
+  <script>
+    (function () {
+      var m = /[?&]lang=(de|en|it)\b/.exec(location.search);
+      if (m) document.documentElement.lang = m[1];
+    })();
+  </script>
+  <!-- Stesso dominio dell'API: nessun problema di CORS o cookie. -->
+  <script src="/member-form.js" data-endpoint="/api/membership" data-terms-de="/test-danke.html?terms=de" data-terms-en="/test-danke.html?terms=en" data-terms-it="/test-danke.html?terms=it" defer></script>
+</body>
+</html>
