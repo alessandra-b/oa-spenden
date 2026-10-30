@@ -36,7 +36,8 @@ module.exports = async (req, res) => {
 
     if (req.method === 'GET') {
         const lang = config.normalizeLang(req.query && req.query.lang);
-        res.setHeader('Cache-Control', 'public, max-age=300');
+        // Niente cache: una risposta salvata senza intestazioni CORS bloccherebbe il form.
+        res.setHeader('Cache-Control', 'no-store');
         res.status(200).json({
             fee: config.membershipFee(),
             currency: 'CHF',
