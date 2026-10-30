@@ -166,6 +166,8 @@ async function fillMember(page, over = {}) {
             const before = state.brevo.emails.length;
             const page = await browser.newPage();
             await page.goto(`${base}/footer-test.html`);
+            await page.waitForTimeout(500);
+            assert.equal(await page.isDisabled('input[type=submit]'), false, 'bottone attivo anche senza Turnstile');
             await page.fill('#email', 'dora@example.ch');
             await page.click('input[type=submit]');
             await page.waitForSelector('.w-form-done', { state: 'visible' });

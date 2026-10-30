@@ -39,8 +39,27 @@
     form.appendChild(hp);
   }
 
+  // Webflow (protezione antispam Cloudflare Turnstile) disattiva il bottone finche' non arriva il
+  // token di Cloudflare. L'invio pero' va al nostro server, che non usa quel token: se Turnstile non
+  // si carica (bloccato dal browser, errore 600010...) il form resterebbe inutilizzabile.
+  // Il bottone resta quindi sempre attivo, tranne mentre stiamo inviando noi.
+  function keepEnabled(form) {
+    var button = form.querySelector('[type="submit"]');
+    if (!button) return;
+    var fix = function () {
+      if (button.disabled && form.getAttribute('data-oa-busy') !== '1') button.disabled = false;
+    };
+    fix();
+    if (window.MutationObserver) {
+      new MutationObserver(fix).observe(button, { attributes: true, attributeFilter: ['disabled'] });
+    }
+  }
+
   function prepare() {
-    Array.prototype.forEach.call(document.querySelectorAll(SELECTOR), addHoneypot);
+    Array.prototype.forEach.call(document.querySelectorAll(SELECTOR), function (form) {
+      addHoneypot(form);
+      keepEnabled(form);
+    });
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', prepare); else prepare();
 
