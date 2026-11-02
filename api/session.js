@@ -72,7 +72,7 @@ module.exports = async (req, res) => {
 
         const result = await orders.startPayment(req, {
             ctx: { type: 'donation', lang, amount, level, person, newsletter: donor.newsletter === true },
-            description: `Orchestra Aurea donation (${level})`,
+            description: `Orchestra Aurea Spende (${level})`,
             billingAddress: {
                 FirstName: person.firstName,
                 LastName: person.lastName,

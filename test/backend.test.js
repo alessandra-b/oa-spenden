@@ -224,7 +224,7 @@ test('donazione: livello ricalcolato, email al donatore e a info@, pagina Danke'
     assert.equal(start.statusCode, 200);
     const init = lastInit(state);
     assert.equal(init.Payment.Amount.Value, '52000');
-    assert.equal(init.Payment.Description, 'Orchestra Aurea donation (FLOW)');
+    assert.equal(init.Payment.Description, 'Orchestra Aurea Spende (FLOW)');
     assert.match(init.Payment.OrderId, /^OAD-/);
     pay(state, 'tok1');
     const r = await call(ret, { method: 'GET', query: returnQuery(init.ReturnUrl.Url) });
