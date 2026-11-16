@@ -349,6 +349,45 @@ test('database non raggiungibile all\'avvio: si ripiega sul cookie', async () =>
     assert.match(start.headers['set-cookie'][0], /^oa_o_OAM-/);
 });
 
+test('database archiviato (non raggiungibile): cookie di riserva, incasso ed email partono una volta', async () => {
+    setEnv(REDIS);
+    const state = createMocks();
+    state.redis.down = true;
+    const start = await call(membership, { body: memberBody() });
+    assert.equal(start.statusCode, 200);
+    const cookie = start.headers['set-cookie'][0].split(';')[0];
+    assert.match(cookie, /^oa_o_OAM-/);
+    const init = lastInit(state);
+    pay(state, 'tok1');
+    // la notifica non trova l'ordine (database giu'): 500, Saferpay riprovera'; nessuna email
+    const n = await call(notify, { method: 'GET', query: Object.fromEntries(new URL(init.Notification.SuccessNotifyUrl).searchParams) });
+    assert.equal(n.statusCode, 500);
+    assert.equal(state.brevo.emails.length, 0);
+    // il ritorno del browser usa il cookie: incassa e manda le email senza il controllo doppioni
+    const r = await call(ret, { method: 'GET', query: returnQuery(init.ReturnUrl.Url), headers: { cookie } });
+    assert.equal(r.statusCode, 302);
+    assert.match(r.headers.location, /status=success$/);
+    assert.equal(state.brevo.emails.length, 3, 'conferma socio, avviso, newsletter');
+    assert.equal(state.saferpay.tx.tok1.status, 'CAPTURED');
+    // una nuova notifica non manda niente in piu'
+    await call(notify, { method: 'GET', query: Object.fromEntries(new URL(init.Notification.SuccessNotifyUrl).searchParams) });
+    assert.equal(state.brevo.emails.length, 3);
+});
+
+test('keepalive: scrive nel database; con CRON_SECRET risponde solo a Vercel', async () => {
+    const keepalive = require('../api/keepalive');
+    setEnv(REDIS);
+    createMocks();
+    const ok = await call(keepalive, { method: 'GET' });
+    assert.equal(ok.statusCode, 200);
+    process.env.CRON_SECRET = 'segreto';
+    const no = await call(keepalive, { method: 'GET' });
+    assert.equal(no.statusCode, 401);
+    const yes = await call(keepalive, { method: 'GET', headers: { authorization: 'Bearer segreto' } });
+    assert.equal(yes.statusCode, 200);
+    delete process.env.CRON_SECRET;
+});
+
 test('CORS: solo le origini configurate', async () => {
     setEnv();
     createMocks();
