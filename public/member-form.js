@@ -8,8 +8,9 @@
  *       <div data-oa-member-form></div>
  *       <script src="https://spenden.orchestra-aurea.ch/member-form.js" defer></script>
  *
- * Quota, anno e link agli statuti arrivano dal server (GET /api/membership): si cambiano
- * solo su Vercel (MEMBERSHIP_FEE_CHF, STATUTEN_URL), mai qui.
+ * Richiesta di adesione SENZA pagamento online: il Vorstand esamina la richiesta e, dopo
+ * l'ammissione, manda per posta la fattura con la polizza QR (decisione del direttivo, 23.11.2026).
+ * Quota, anno associativo (1 agosto - 31 luglio) e statuti arrivano dal server (GET /api/membership).
  *
  * CONFIGURAZIONE facoltativa (attributi data-* sul <script> o sul <div>)
  *   data-endpoint                 URL di /api/membership (default: spenden.orchestra-aurea.ch)
@@ -45,10 +46,10 @@
     de: {
       title: 'Mitglied werden',
       back: 'Zurück',
-      formLabel: 'Mitgliedschaft bezahlen',
+      formLabel: 'Anmeldung zur Mitgliedschaft',
       feeTitle: 'Jahresbeitrag',
-      feeLine: 'Mitgliedschaft {year}',
-      feeNote: 'Mit der Zahlung des Jahresbeitrags werden Sie Mitglied des Vereins Orchestra Aurea.',
+      feeLine: 'Vereinsjahr {year}',
+      feeNote: 'Das Vereinsjahr dauert vom 1. August bis 31. Juli. Der Vorstand prüft Ihre Anmeldung; nach der Aufnahme erhalten Sie die Rechnung mit QR-Einzahlungsschein per Post.',
       yourDetails: 'Ihre Angaben',
       firstName: 'Vorname',
       lastName: 'Nachname',
@@ -60,11 +61,11 @@
       day: 'Tag', month: 'Monat', year: 'Jahr',
       dayPh: 'TT', monthPh: 'MM', yearPh: 'JJJJ',
       email: 'E-Mail',
-      phone: 'Telefon (optional)',
+      phone: 'Telefon',
       newsletterPrefix: 'Ich bin mit dem Empfang des Newsletters von Orchestra Aurea einverstanden und habe die ',
       privacyLink: 'Datenschutzerklärung',
       newsletterSuffix: ' gelesen.',
-      statutesPrefix: 'Ich trete dem Verein Orchestra Aurea bei und anerkenne die ',
+      statutesPrefix: 'Ich möchte dem Verein Orchestra Aurea beitreten und anerkenne die ',
       statutesLink: 'Statuten',
       statutesSuffix: '.',
       docBack: 'Zurück zum Formular',
@@ -81,19 +82,25 @@
       validCountry: 'Bitte wählen Sie Ihr Land.',
       acceptStatutesError: 'Bitte bestätigen Sie den Beitritt zum Verein und die Statuten.',
       acceptTermsError: 'Bitte akzeptieren Sie die Allgemeinen Geschäftsbedingungen, bevor Sie fortfahren.',
-      unableToStartPayment: 'Zahlung konnte nicht gestartet werden. Bitte versuchen Sie es erneut.',
+      unableToSend: 'Die Anmeldung konnte nicht gesendet werden. Bitte versuchen Sie es erneut.',
+      tooMany: 'Zu viele Versuche. Bitte versuchen Sie es später erneut.',
+      mentionConsent: 'Ich bin einverstanden, dass mein Name auf der Website von Orchestra Aurea als Vereinsmitglied genannt wird. Diese Zustimmung kann ich jederzeit widerrufen.',
+      mentionName: 'Name für die Nennung',
+      mentionNameMissing: 'Bitte geben Sie an, unter welchem Namen wir Sie nennen dürfen.',
+      doneTitle: 'Vielen Dank für Ihre Anmeldung',
+      doneText: 'Wir haben Ihre Anmeldung erhalten und Ihnen eine Bestätigung an {email} geschickt. Der Vorstand meldet sich nach der Prüfung bei Ihnen.',
       noRedirectUrl: 'Keine Weiterleitungs-URL erhalten. Bitte versuchen Sie es erneut.',
       connectionError: 'Verbindungsfehler. Bitte versuchen Sie es erneut.',
-      redirecting: 'Weiterleitung…',
-      proceedPayment: 'Zur Zahlung fortfahren'
+      redirecting: 'Wird gesendet…',
+      proceedPayment: 'Anmeldung senden'
     },
     en: {
       title: 'Become a member',
       back: 'Back',
-      formLabel: 'Pay the membership fee',
+      formLabel: 'Membership application',
       feeTitle: 'Annual membership fee',
-      feeLine: 'Membership {year}',
-      feeNote: 'Once your annual fee is paid, you become a member of the Orchestra Aurea association.',
+      feeLine: 'Association year {year}',
+      feeNote: 'The association year runs from 1 August to 31 July. The board reviews your application; once you are admitted, you will receive the invoice with a QR payment slip by post.',
       yourDetails: 'Your details',
       firstName: 'First name',
       lastName: 'Last name',
@@ -105,11 +112,11 @@
       day: 'Day', month: 'Month', year: 'Year',
       dayPh: 'DD', monthPh: 'MM', yearPh: 'YYYY',
       email: 'Email',
-      phone: 'Phone (optional)',
+      phone: 'Phone',
       newsletterPrefix: 'I agree to receive the Orchestra Aurea newsletter and I have read the ',
       privacyLink: 'Privacy Policy',
       newsletterSuffix: '.',
-      statutesPrefix: 'I am joining the Orchestra Aurea association and accept its ',
+      statutesPrefix: 'I would like to join the Orchestra Aurea association and accept its ',
       statutesLink: 'Articles of Association',
       statutesSuffix: '.',
       docBack: 'Back to the form',
@@ -126,19 +133,25 @@
       validCountry: 'Please choose your country.',
       acceptStatutesError: 'Please confirm that you are joining the association and accept its Articles of Association.',
       acceptTermsError: 'Please accept the Terms & Conditions before proceeding.',
-      unableToStartPayment: 'Unable to start payment. Please try again.',
+      unableToSend: 'Your application could not be sent. Please try again.',
+      tooMany: 'Too many attempts. Please try again later.',
+      mentionConsent: 'I agree that my name may be listed on the Orchestra Aurea website as a member of the association. I can withdraw this consent at any time.',
+      mentionName: 'Name to be listed',
+      mentionNameMissing: 'Please tell us the name under which we may list you.',
+      doneTitle: 'Thank you for your application',
+      doneText: 'We have received your application and sent a confirmation to {email}. The board will get back to you after reviewing it.',
       noRedirectUrl: 'No redirect URL was returned. Please try again.',
       connectionError: 'Connection error. Please try again.',
-      redirecting: 'Redirecting…',
-      proceedPayment: 'Proceed to payment'
+      redirecting: 'Sending…',
+      proceedPayment: 'Send application'
     },
     it: {
       title: 'Diventa socio',
       back: 'Indietro',
-      formLabel: 'Paga la quota associativa',
+      formLabel: 'Richiesta di adesione',
       feeTitle: 'Quota annuale',
-      feeLine: 'Iscrizione {year}',
-      feeNote: 'Con il pagamento della quota annuale diventi socio dell’associazione Orchestra Aurea.',
+      feeLine: 'Anno associativo {year}',
+      feeNote: 'L’anno associativo va dal 1° agosto al 31 luglio. Il comitato direttivo esamina la tua richiesta; dopo l’ammissione riceverai per posta la fattura con la polizza di versamento QR.',
       yourDetails: 'I tuoi dati',
       firstName: 'Nome',
       lastName: 'Cognome',
@@ -150,11 +163,11 @@
       day: 'Giorno', month: 'Mese', year: 'Anno',
       dayPh: 'GG', monthPh: 'MM', yearPh: 'AAAA',
       email: 'Email',
-      phone: 'Telefono (facoltativo)',
+      phone: 'Telefono',
       newsletterPrefix: 'Acconsento a ricevere la newsletter di Orchestra Aurea e dichiaro di aver letto l\'',
       privacyLink: 'Informativa sulla Privacy',
       newsletterSuffix: '.',
-      statutesPrefix: 'Aderisco all’associazione Orchestra Aurea e ne accetto lo ',
+      statutesPrefix: 'Desidero aderire all’associazione Orchestra Aurea e ne accetto lo ',
       statutesLink: 'statuto',
       statutesSuffix: '.',
       docBack: 'Torna al form',
@@ -171,11 +184,17 @@
       validCountry: 'Scegli il tuo Paese.',
       acceptStatutesError: 'Conferma l’adesione all’associazione e l’accettazione dello statuto.',
       acceptTermsError: 'Accetta i Termini e Condizioni prima di procedere.',
-      unableToStartPayment: 'Impossibile avviare il pagamento. Riprova.',
+      unableToSend: 'Impossibile inviare la richiesta. Riprova.',
+      tooMany: 'Troppi tentativi. Riprova più tardi.',
+      mentionConsent: 'Accetto che il mio nome sia citato sul sito di Orchestra Aurea come membro dell’associazione. Posso revocare il consenso in qualsiasi momento.',
+      mentionName: 'Nome da citare',
+      mentionNameMissing: 'Indica con quale nome possiamo citarti.',
+      doneTitle: 'Grazie per la tua richiesta',
+      doneText: 'Abbiamo ricevuto la tua richiesta e ti abbiamo inviato una conferma a {email}. Il comitato direttivo ti contatterà dopo averla esaminata.',
       noRedirectUrl: 'Nessun URL di reindirizzamento ricevuto. Riprova.',
       connectionError: 'Errore di connessione. Riprova.',
-      redirecting: 'Reindirizzamento…',
-      proceedPayment: 'Procedi al pagamento'
+      redirecting: 'Invio in corso…',
+      proceedPayment: 'Invia la richiesta'
     }
   };
   var LOCALES = { de: 'de-CH', en: 'en-GB', it: 'it-CH' };
@@ -222,12 +241,20 @@
   function emptyDetails() {
     return { firstName: '', lastName: '', address: '', postalCode: '', city: '', country: 'CH', bdDay: '', bdMonth: '', bdYear: '', email: '', phone: '' };
   }
+  // Anno associativo dal 1 agosto al 31 luglio, es. "2026/27" (il server manda lo stesso valore).
+  function associationYear() {
+    var now = new Date(), y = now.getFullYear(), start = now.getMonth() >= 7 ? y : y - 1;
+    return start + '/' + String(start + 1).slice(-2);
+  }
   var state = {
     fee: 100,
-    year: new Date().getFullYear(),
+    year: associationYear(),
     statutesUrl: '',
     details: emptyDetails(),
     newsletter: false,
+    mention: false,
+    mentionName: '',
+    mentionNameEdited: false,
     statutesAccepted: false,
     termsAccepted: false,
     submitting: false
@@ -235,7 +262,7 @@
 
   function saveDraft() {
     try {
-      sessionStorage.setItem(STORAGE_KEY, JSON.stringify({ details: state.details, newsletter: state.newsletter }));
+      sessionStorage.setItem(STORAGE_KEY, JSON.stringify({ details: state.details, newsletter: state.newsletter, mention: state.mention, mentionName: state.mentionName, mentionNameEdited: state.mentionNameEdited }));
     } catch (e) { /* storage non disponibile */ }
   }
   function loadDraft() {
@@ -302,6 +329,8 @@
     '.oa-root .oa-doc-close{flex:none;max-width:100%;padding:.5rem 1rem;border:1px solid var(--oa-gold);border-radius:8px;background:transparent;color:var(--oa-gold);font:inherit;font-size:1rem;line-height:1.4;cursor:pointer}' +
     '.oa-root .oa-doc-close:hover{background:var(--oa-sand)}' +
     '.oa-root .oa-doc>.oa-doc-close{margin-top:1.5rem}' +
+    '.oa-root .oa-mention-name{margin-top:.75rem}' +
+    '.oa-root .oa-done{padding:.5rem 0}.oa-root .oa-done:focus{outline:none}' +
     '.oa-root .oa-hidden{display:none!important}' +
     '@media (max-width:30rem){.oa-root .oa-pay{padding:.875rem 1rem;letter-spacing:.03em}' +
     '.oa-root .oa-date-row{grid-template-columns:1fr 1fr 1.5fr}}';
@@ -339,19 +368,22 @@
             '</div>' +
           '</fieldset>' +
           '<input class="oa-input" id="oa-email" name="email" type="email" autocomplete="email" required>' +
-          '<input class="oa-input" id="oa-phone" name="phone" type="tel" autocomplete="tel">' +
+          '<input class="oa-input" id="oa-phone" name="phone" type="tel" autocomplete="tel" required>' +
+          // campo trappola per i bot: invisibile, deve restare vuoto
+          '<input id="oa-website" name="website" type="text" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0">' +
         '</div>' +
         '<label class="oa-check"><input type="checkbox" id="oa-newsletter"><span><span id="oa-newsletter-prefix"></span><a id="oa-privacy-link" href="#" target="_blank" rel="noopener noreferrer"></a><span id="oa-newsletter-suffix"></span></span></label>' +
+        '<label class="oa-check"><input type="checkbox" id="oa-mention"><span id="oa-mention-text"></span></label>' +
+        '<input class="oa-input oa-mention-name oa-hidden" id="oa-mention-name" name="mentionName" type="text" maxlength="100" autocomplete="name">' +
       '</section>' +
       '<section class="oa-section">' +
-        '<p class="oa-note" id="oa-saferpay"></p>' +
-        '<p class="oa-note" id="oa-charges"></p>' +
         '<label class="oa-check"><input type="checkbox" id="oa-statutes"><span><span id="oa-statutes-prefix"></span><a id="oa-statutes-link" href="#" target="_blank" rel="noopener noreferrer"></a><span id="oa-statutes-text" class="oa-hidden"></span><span id="oa-statutes-suffix"></span></span></label>' +
         '<label class="oa-check"><input type="checkbox" id="oa-terms"><span><span id="oa-terms-prefix"></span> <a id="oa-terms-link" href="#" target="_blank" rel="noopener noreferrer"></a>.</span></label>' +
         '<p class="oa-error oa-hidden" id="oa-error" role="alert"></p>' +
         '<div class="oa-actions"><button type="submit" class="oa-pay" id="oa-pay"></button></div>' +
       '</section>' +
     '</form>' +
+    '<section class="oa-done oa-hidden" id="oa-done" tabindex="-1"><h2 class="oa-section-title" id="oa-done-title"></h2><p class="oa-note" id="oa-done-text"></p></section>' +
     '<section class="oa-doc oa-hidden" id="oa-doc" aria-labelledby="oa-doc-title">' +
       '<div class="oa-doc-head">' +
         '<h2 class="oa-section-title oa-doc-title" id="oa-doc-title" tabindex="-1"></h2>' +
@@ -386,7 +418,8 @@
       bdLegend: $('oa-bd-legend'), bdDay: $('oa-bdDay'), bdMonth: $('oa-bdMonth'), bdYear: $('oa-bdYear'),
       email: $('oa-email'), phone: $('oa-phone'),
       newsletter: $('oa-newsletter'), newsletterPrefix: $('oa-newsletter-prefix'), privacyLink: $('oa-privacy-link'), newsletterSuffix: $('oa-newsletter-suffix'),
-      saferpay: $('oa-saferpay'), charges: $('oa-charges'),
+      website: $('oa-website'), mention: $('oa-mention'), mentionText: $('oa-mention-text'), mentionName: $('oa-mention-name'),
+      done: $('oa-done'), doneTitle: $('oa-done-title'), doneText: $('oa-done-text'),
       statutes: $('oa-statutes'), statutesPrefix: $('oa-statutes-prefix'), statutesLink: $('oa-statutes-link'),
       statutesText: $('oa-statutes-text'), statutesSuffix: $('oa-statutes-suffix'),
       terms: $('oa-terms'), termsPrefix: $('oa-terms-prefix'), termsLink: $('oa-terms-link'),
@@ -416,10 +449,10 @@
     el.privacyLink.textContent = t.privacyLink;
     el.privacyLink.setAttribute('href', CONFIG.privacy);
     el.newsletterSuffix.textContent = t.newsletterSuffix;
-    el.saferpay.appendChild(document.createTextNode(t.saferpayInfo));
-    el.saferpay.appendChild(document.createElement('br'));
-    el.saferpay.appendChild(document.createTextNode(t.cardStorageInfo));
-    el.charges.textContent = t.noAdditionalCharges;
+    el.mentionText.textContent = t.mentionConsent;
+    el.mentionName.setAttribute('placeholder', t.mentionName);
+    el.mentionName.setAttribute('aria-label', t.mentionName);
+    el.doneTitle.textContent = t.doneTitle;
     el.statutesPrefix.textContent = t.statutesPrefix;
     el.statutesLink.textContent = t.statutesLink;
     el.statutesText.textContent = t.statutesLink;
@@ -457,7 +490,8 @@
       el.statutesLink.classList.toggle('oa-hidden', !hasStatutes);
       el.statutesText.classList.toggle('oa-hidden', hasStatutes);
       if (hasStatutes) el.statutesLink.setAttribute('href', state.statutesUrl);
-      el.pay.textContent = state.submitting ? t.redirecting : t.proceedPayment + ' CHF ' + state.fee;
+      el.pay.textContent = state.submitting ? t.redirecting : t.proceedPayment;
+      renderMention();
       el.pay.disabled = state.submitting;
     }
 
@@ -471,10 +505,19 @@
       el.error.classList.add('oa-hidden');
     }
 
+    function defaultMentionName() {
+      return (state.details.firstName.trim() + ' ' + state.details.lastName.trim()).trim();
+    }
+    function renderMention() {
+      el.mentionName.classList.toggle('oa-hidden', !state.mention);
+      if (!state.mentionNameEdited) {
+        state.mentionName = defaultMentionName();
+        if (document.activeElement !== el.mentionName) el.mentionName.value = state.mentionName;
+      }
+    }
     function validEmail(v) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim()); }
     function validPhone(v) {
       v = v.trim();
-      if (!v) return true;
       return /^[+0-9 ()./-]{6,30}$/.test(v) && (v.match(/\d/g) || []).length >= 6;
     }
     // "AAAA-MM-GG" oppure null se la data non esiste / e' nel futuro / prima del 1900
@@ -497,6 +540,8 @@
       el.country.value = d.country || 'CH';
       if (!el.country.value) el.country.value = 'CH';
       el.newsletter.checked = !!state.newsletter;
+      el.mention.checked = !!state.mention;
+      el.mentionName.value = state.mentionName || '';
       el.statutes.checked = false;
       el.terms.checked = false;
     }
@@ -518,7 +563,9 @@
       if (!birth) { showError(t.validBirthDate, el.bdDay); return; }
       if (!d.email.trim()) { showError(t.completeFields, el.email); return; }
       if (!validEmail(d.email)) { showError(t.validEmail, el.email); return; }
+      if (!d.phone.trim()) { showError(t.completeFields, el.phone); return; }
       if (!validPhone(d.phone)) { showError(t.validPhone, el.phone); return; }
+      if (state.mention && !state.mentionName.trim()) { showError(t.mentionNameMissing, el.mentionName); return; }
       if (!state.statutesAccepted) { showError(t.acceptStatutesError, el.statutes); return; }
       if (!state.termsAccepted) { showError(t.acceptTermsError, el.terms); return; }
 
@@ -543,6 +590,8 @@
             phone: d.phone.trim(),
             newsletter: !!state.newsletter
           },
+          mention: state.mention ? { consent: true, name: state.mentionName.trim().slice(0, 100) } : { consent: false },
+          website: el.website.value,
           statutesAccepted: true,
           termsAccepted: true
         })
@@ -558,20 +607,23 @@
               INVALID_BIRTHDATE: [t.validBirthDate, el.bdDay],
               INVALID_PHONE: [t.validPhone, el.phone],
               INVALID_COUNTRY: [t.validCountry, el.country],
-              MISSING_DETAILS: [t.completeFields, null]
-            }[code] || [t.unableToStartPayment, null];
+              MISSING_DETAILS: [t.completeFields, null],
+              INVALID_MENTION: [t.mentionNameMissing, el.mentionName],
+              RATE_LIMIT: [t.tooMany, null]
+            }[code] || [t.unableToSend, null];
             state.submitting = false;
             render();
             showError(msg[0], msg[1]);
             return;
           }
-          if (result.payload && result.payload.redirectUrl) {
-            window.location.href = result.payload.redirectUrl;
-            return;
-          }
-          state.submitting = false;
-          render();
-          showError(t.noRedirectUrl);
+          // Richiesta inviata: il form lascia il posto al messaggio di conferma.
+          try { sessionStorage.removeItem(STORAGE_KEY); } catch (e) { /* ignore */ }
+          el.doneText.textContent = fmt(t.doneText, { email: d.email.trim() });
+          el.form.classList.add('oa-hidden');
+          el.doc.classList.add('oa-hidden');
+          el.done.classList.remove('oa-hidden');
+          try { el.done.focus({ preventScroll: true }); } catch (e) { el.done.focus(); }
+          if (rootEl.scrollIntoView) rootEl.scrollIntoView({ block: 'start', behavior: 'smooth' });
         })
         .catch(function () {
           state.submitting = false;
@@ -582,10 +634,20 @@
 
     // ---- EVENTI -------------------------------------------------------------
     ['firstName', 'lastName', 'address', 'postalCode', 'city', 'email', 'phone', 'bdDay', 'bdMonth', 'bdYear'].forEach(function (k) {
-      el[k].addEventListener('input', function (e) { state.details[k] = e.target.value; saveDraft(); });
+      el[k].addEventListener('input', function (e) {
+        state.details[k] = e.target.value;
+        if (k === 'firstName' || k === 'lastName') renderMention();
+        saveDraft();
+      });
     });
     el.country.addEventListener('change', function (e) { state.details.country = e.target.value; saveDraft(); });
     el.newsletter.addEventListener('change', function (e) { state.newsletter = e.target.checked; saveDraft(); });
+    el.mention.addEventListener('change', function (e) { state.mention = e.target.checked; saveDraft(); renderMention(); });
+    el.mentionName.addEventListener('input', function (e) {
+      state.mentionName = e.target.value;
+      state.mentionNameEdited = e.target.value.trim() !== '' && e.target.value.trim() !== defaultMentionName();
+      saveDraft();
+    });
     el.statutes.addEventListener('change', function (e) { state.statutesAccepted = e.target.checked; });
     el.terms.addEventListener('change', function (e) { state.termsAccepted = e.target.checked; });
     el.form.addEventListener('submit', submit);
@@ -683,7 +745,12 @@
     // Bozza (dati gia' inseriti, se la persona torna sulla pagina)
     var draft = loadDraft();
     if (draft && draft.details) state.details = Object.assign(emptyDetails(), draft.details);
-    if (draft) state.newsletter = !!draft.newsletter;
+    if (draft) {
+      state.newsletter = !!draft.newsletter;
+      state.mention = !!draft.mention;
+      state.mentionNameEdited = !!draft.mentionNameEdited;
+      state.mentionName = draft.mentionName ? String(draft.mentionName) : '';
+    }
     fillInputs();
     if (el.country.value !== state.details.country) state.details.country = el.country.value;
     render();

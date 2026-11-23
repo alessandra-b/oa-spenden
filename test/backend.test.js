@@ -7,6 +7,7 @@ const { createMocks, mockReq, mockRes, setEnv, REDIS } = require('./mocks');
 
 const session = require('../api/session');
 const membership = require('../api/membership');
+const memberPay = require('./legacy-membership-pay'); // vecchio percorso con pagamento (ordini OAM-)
 const ret = require('../api/return');
 const notify = require('../api/notify');
 const nlApi = require('../api/newsletter');
@@ -47,18 +48,20 @@ test.beforeEach(() => brevo.resetCache());
 
 // ---------------------------------------------------------------------------------------
 
-test('membership GET: quota, anno e statuti dalle variabili', async () => {
+test('membership GET: quota, anno associativo (dal 1 agosto) e statuti dalle variabili', async () => {
     setEnv({ STATUTEN_URL: 'https://cdn.example/statuten.pdf' });
     createMocks();
     const res = await call(membership, { method: 'GET', query: { lang: 'it' } });
     assert.equal(res.statusCode, 200);
     assert.equal(res.body.fee, 100);
     assert.equal(res.body.currency, 'CHF');
-    assert.equal(res.body.year, new Date().getFullYear());
+    assert.match(res.body.year, /^\d{4}\/\d{2}$/);
     assert.equal(res.body.statutesUrl, 'https://cdn.example/statuten.pdf');
+    assert.equal(membership.associationYear(new Date('2026-07-31T12:00:00Z')), '2025/26');
+    assert.equal(membership.associationYear(new Date('2026-08-01T12:00:00Z')), '2026/27');
 });
 
-test('membership POST: controlli sui dati', async () => {
+test('membership POST: controlli sui dati (telefono obbligatorio)', async () => {
     setEnv();
     createMocks();
     const cases = [
@@ -67,25 +70,64 @@ test('membership POST: controlli sui dati', async () => {
         [{ member: Object.assign({}, MEMBER, { birthDate: '2999-01-01' }) }, 'INVALID_BIRTHDATE'],
         [{ member: Object.assign({}, MEMBER, { country: 'XX' }) }, 'INVALID_COUNTRY'],
         [{ member: Object.assign({}, MEMBER, { phone: 'abc' }) }, 'INVALID_PHONE'],
+        [{ member: Object.assign({}, MEMBER, { phone: '' }) }, 'MISSING_DETAILS'],
         [{ member: Object.assign({}, MEMBER, { city: ' ' }) }, 'MISSING_DETAILS'],
         [{ statutesAccepted: false }, 'STATUTES_NOT_ACCEPTED'],
-        [{ termsAccepted: false }, 'TERMS_NOT_ACCEPTED']
+        [{ termsAccepted: false }, 'TERMS_NOT_ACCEPTED'],
+        [{ mention: { consent: true, name: ' ' } }, 'INVALID_MENTION']
     ];
     for (const [over, code] of cases) {
         const res = await call(membership, { body: memberBody(over) });
         assert.equal(res.statusCode, 400, code);
         assert.equal(res.body.code, code);
     }
-    // telefono facoltativo
-    const ok = await call(membership, { body: memberBody({ member: Object.assign({}, MEMBER, { phone: '' }) }) });
-    assert.equal(ok.statusCode, 200);
+});
+
+test('richiesta di adesione: nessun pagamento, conferma + avviso + newsletter, bozza Gönner senza livello', async () => {
+    setEnv(Object.assign({ STATUTEN_URL: 'https://cdn.example/statuten.pdf', WEBFLOW_API_TOKEN: 'wf-test' }, REDIS));
+    const state = createMocks();
+    const res = await call(membership, { body: memberBody({ lang: 'it', mention: { consent: true, name: 'Anna Muster' } }) });
+    assert.equal(res.statusCode, 200);
+    assert.equal(res.body.ok, true);
+    assert.match(res.body.reference, /^OAA-\d{8}-[A-F0-9]{8}$/);
+    assert.equal(state.saferpay.calls.length, 0, 'nessun pagamento');
+    const person = state.brevo.emails.find((e) => e.tags.includes('oa-application'));
+    const admin = state.brevo.emails.find((e) => e.tags.includes('oa-application-admin'));
+    assert.match(person.subject, /richiesta di adesione/);
+    assert.match(person.htmlContent, /polizza di versamento QR/);
+    assert.match(person.htmlContent, /1° agosto al 31 luglio/);
+    assert.match(person.htmlContent, /Anna Muster/);
+    assert.equal(person.attachment[0].name, 'Statuten-Orchestra-Aurea.pdf');
+    assert.match(admin.subject, /^Neue Mitgliedschaftsanfrage: Anna Muster/);
+    assert.match(admin.htmlContent, /QR-Einzahlungsschein/);
+    assert.match(admin.htmlContent, /Mitglied bis/);
+    assert.match(admin.htmlContent, /\+41 79 123 45 67/);
+    assert.equal(state.webflow.items.length, 1);
+    const item = state.webflow.items[0];
+    assert.equal(item.isDraft, true);
+    assert.equal(item.fieldData['rang-rank'], 0);
+    assert.equal(item.fieldData['stufe-tier'], undefined);
+    const nl = state.brevo.emails.find((e) => e.tags.includes('oa-newsletter-optin'));
+    assert.ok(nl, 'conferma newsletter richiesta');
+});
+
+test('richiesta di adesione: campo trappola e limite di richieste', async () => {
+    setEnv(REDIS);
+    const state = createMocks();
+    const bot = await call(membership, { body: memberBody({ website: 'http://spam' }) });
+    assert.equal(bot.statusCode, 200);
+    assert.equal(state.brevo.emails.length, 0, 'bot: nessuna email');
+    let last;
+    for (let i = 0; i < 6; i++) last = await call(membership, { body: memberBody({ member: Object.assign({}, MEMBER, { email: `p${i}@example.ch` }) }) });
+    assert.equal(last.statusCode, 429);
+    assert.equal(last.body.code, 'RATE_LIMIT');
 });
 
 test('membership con database: notifica + ritorno quasi insieme -> un solo incasso, email una volta', async () => {
     setEnv(Object.assign({ STATUTEN_URL: 'https://cdn.example/statuten.pdf', MEMBERSHIP_FEE_CHF: '100' }, REDIS));
     const state = createMocks();
 
-    const start = await call(membership, { body: memberBody({ lang: 'it', amount: 1 /* ignorato */ }) });
+    const start = await call(memberPay, { body: memberBody({ lang: 'it', amount: 1 /* ignorato */ }) });
     assert.equal(start.statusCode, 200);
     assert.ok(start.body.redirectUrl.startsWith('https://test.saferpay.com/'));
     assert.equal(start.headers['set-cookie'], undefined, 'con il database nessun cookie');
@@ -157,7 +199,7 @@ test('notifica: firma sbagliata -> 400, ordine sconosciuto -> 200', async () => 
 test('notifica: Brevo giu\' -> 500 (Saferpay riprova), al nuovo tentativo partono solo le email mancanti', async () => {
     setEnv(REDIS);
     const state = createMocks();
-    const start = await call(membership, { body: memberBody({ member: Object.assign({}, MEMBER, { newsletter: false }) }) });
+    const start = await call(memberPay, { body: memberBody({ member: Object.assign({}, MEMBER, { newsletter: false }) }) });
     assert.equal(start.statusCode, 200);
     const init = lastInit(state);
     pay(state, 'tok1');
@@ -177,7 +219,7 @@ test('notifica: Brevo giu\' -> 500 (Saferpay riprova), al nuovo tentativo parton
 test('senza database: cookie di riserva, ritorno incassa e manda le email; nessuna notifica registrata', async () => {
     setEnv();
     const state = createMocks();
-    const start = await call(membership, { body: memberBody({ lang: 'en' }) });
+    const start = await call(memberPay, { body: memberBody({ lang: 'en' }) });
     assert.equal(start.statusCode, 200);
     const cookie = start.headers['set-cookie'][0];
     assert.match(cookie, /^oa_o_OAM-[^=]+=tok1~/);
@@ -199,7 +241,7 @@ test('senza database: cookie di riserva, ritorno incassa e manda le email; nessu
 test('pagamento annullato -> incomplete, nessuna email', async () => {
     setEnv(REDIS);
     const state = createMocks();
-    await call(membership, { body: memberBody() });
+    await call(memberPay, { body: memberBody() });
     const init = lastInit(state);
     pay(state, 'tok1', 'ABORTED');
     const r = await call(ret, { method: 'GET', query: returnQuery(init.ReturnUrl.Url) });
@@ -210,7 +252,7 @@ test('pagamento annullato -> incomplete, nessuna email', async () => {
 test('ritorno con firma alterata -> error', async () => {
     setEnv(REDIS);
     const state = createMocks();
-    await call(membership, { body: memberBody() });
+    await call(memberPay, { body: memberBody() });
     const q = returnQuery(lastInit(state).ReturnUrl.Url);
     q.s = q.s.slice(0, -2) + 'xx';
     const r = await call(ret, { method: 'GET', query: q });
@@ -346,7 +388,7 @@ test('allegato statuti non scaricabile: l\'email parte comunque senza allegato',
     setEnv(Object.assign({ STATUTEN_URL: 'https://cdn.example/statuten.pdf' }, REDIS));
     const state = createMocks();
     state.brevo.rejectAttachments = true;
-    await call(membership, { body: memberBody({ member: Object.assign({}, MEMBER, { newsletter: false }) }) });
+    await call(memberPay, { body: memberBody({ member: Object.assign({}, MEMBER, { newsletter: false }) }) });
     const init = lastInit(state);
     pay(state, 'tok1');
     await call(ret, { method: 'GET', query: returnQuery(init.ReturnUrl.Url) });
@@ -424,7 +466,7 @@ test('database non raggiungibile all\'avvio: si ripiega sul cookie', async () =>
     setEnv(REDIS);
     const state = createMocks();
     state.redis.down = true;
-    const start = await call(membership, { body: memberBody() });
+    const start = await call(memberPay, { body: memberBody() });
     assert.equal(start.statusCode, 200);
     assert.match(start.headers['set-cookie'][0], /^oa_o_OAM-/);
 });
@@ -433,7 +475,7 @@ test('database archiviato (non raggiungibile): cookie di riserva, incasso ed ema
     setEnv(REDIS);
     const state = createMocks();
     state.redis.down = true;
-    const start = await call(membership, { body: memberBody() });
+    const start = await call(memberPay, { body: memberBody() });
     assert.equal(start.statusCode, 200);
     const cookie = start.headers['set-cookie'][0].split(';')[0];
     assert.match(cookie, /^oa_o_OAM-/);

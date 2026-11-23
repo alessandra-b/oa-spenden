@@ -1,17 +1,33 @@
-// api/membership.js — iscrizione al Verein con pagamento della quota annuale (member-form.js).
+// api/membership.js — richiesta di adesione al Verein (member-form.js).
 //
-// GET  -> impostazioni per il form: { fee, currency, year, statutesUrl } (unica fonte: Vercel)
-// POST -> controlla i dati e avvia il pagamento Saferpay della quota (importo deciso qui,
-//         non dal browser). Ammissione automatica: socio a pagamento avvenuto.
+// Decisione del direttivo (23.11.2026): niente pagamento online. Chi vuole diventare socio
+// manda la richiesta; il Vorstand la esamina e, dopo l'ammissione, spedisce per posta la
+// fattura della quota annuale con la polizza di versamento QR. Anno associativo: 1 agosto - 31 luglio.
+//
+// GET  -> impostazioni per il form: { fee, currency, year: "2026/27", statutesUrl }
+// POST -> controlla i dati, manda la conferma alla persona e l'avviso all'associazione,
+//         l'eventuale conferma newsletter e, con il consenso, una voce in bozza nella lista Gönner.
 
+const crypto = require('crypto');
 const config = require('../lib/config');
-const saferpay = require('../lib/saferpay');
-const orders = require('../lib/orders');
+const store = require('../lib/store');
+const secure = require('../lib/secure');
+const brevo = require('../lib/brevo');
+const mails = require('../lib/mails');
+const newsletter = require('../lib/newsletter');
+const webflow = require('../lib/webflow');
 const { isCountry } = require('../lib/countries');
-const { setCors, fail, isNonEmptyString, isValidEmail, clean } = require('../lib/http');
+const { setCors, fail, isNonEmptyString, isValidEmail, isValidPhone, clean, clientIp, baseUrl } = require('../lib/http');
 
-function membershipYear() {
-    return Number(new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Zurich', year: 'numeric' }).format(new Date()));
+const LIMIT_IP_PER_HOUR = 5;
+const LIMIT_EMAIL_PER_DAY = 3;
+
+// Anno associativo in corso, dal 1 agosto: "2026/27"
+function associationYear(now = new Date()) {
+    const p = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Zurich', year: 'numeric', month: 'numeric' })
+        .formatToParts(now).reduce((o, x) => Object.assign(o, { [x.type]: x.value }), {});
+    const start = Number(p.month) >= 8 ? Number(p.year) : Number(p.year) - 1;
+    return `${start}/${String(start + 1).slice(-2)}`;
 }
 
 // AAAA-MM-GG valida, dal 1900 a oggi
@@ -24,10 +40,10 @@ function validBirthDate(value) {
     return y >= 1900 && date.getTime() <= Date.now();
 }
 
-function validPhone(value) {
-    const v = String(value || '').trim();
-    if (!v) return true; // facoltativo
-    return /^[+0-9 ()./-]{6,30}$/.test(v) && (v.match(/\d/g) || []).length >= 6;
+function newReference() {
+    const d = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Zurich', year: 'numeric', month: '2-digit', day: '2-digit' })
+        .format(new Date()).replace(/-/g, '');
+    return `OAA-${d}-${crypto.randomBytes(4).toString('hex').toUpperCase()}`;
 }
 
 module.exports = async (req, res) => {
@@ -41,7 +57,7 @@ module.exports = async (req, res) => {
         res.status(200).json({
             fee: config.membershipFee(),
             currency: 'CHF',
-            year: membershipYear(),
+            year: associationYear(),
             statutesUrl: config.statutesUrl(lang) || null
         });
         return;
@@ -51,8 +67,9 @@ module.exports = async (req, res) => {
     try {
         const body = req.body || {};
         const m = body.member || {};
+        if (body.website) { res.status(200).json({ ok: true }); return; } // bot: si finge un successo
 
-        const required = ['firstName', 'lastName', 'address', 'postalCode', 'city', 'country', 'birthDate', 'email'];
+        const required = ['firstName', 'lastName', 'address', 'postalCode', 'city', 'country', 'birthDate', 'email', 'phone'];
         if (!required.every((key) => isNonEmptyString(m[key]))) {
             fail(res, 400, 'Missing member details.', { code: 'MISSING_DETAILS' }); return;
         }
@@ -60,21 +77,40 @@ module.exports = async (req, res) => {
         const country = String(m.country).trim().toUpperCase();
         if (!isCountry(country)) { fail(res, 400, 'Invalid country.', { code: 'INVALID_COUNTRY' }); return; }
         if (!validBirthDate(m.birthDate)) { fail(res, 400, 'Invalid birth date.', { code: 'INVALID_BIRTHDATE' }); return; }
-        if (!validPhone(m.phone)) { fail(res, 400, 'Invalid phone.', { code: 'INVALID_PHONE' }); return; }
+        if (!isValidPhone(m.phone)) { fail(res, 400, 'Invalid phone.', { code: 'INVALID_PHONE' }); return; }
         if (body.statutesAccepted !== true) {
             fail(res, 400, 'Statutes must be accepted.', { code: 'STATUTES_NOT_ACCEPTED' }); return;
         }
         if (body.termsAccepted !== true) {
             fail(res, 400, 'Terms must be accepted.', { code: 'TERMS_NOT_ACCEPTED' }); return;
         }
-        if (!saferpay.configured()) {
-            console.error('Mancano le variabili SAFERPAY_* su Vercel');
+        const mentionIn = body.mention && typeof body.mention === 'object' ? body.mention : {};
+        let mention = { consent: false };
+        if (mentionIn.consent === true) {
+            const name = clean(mentionIn.name, 100);
+            if (!name) { fail(res, 400, 'Missing mention name.', { code: 'INVALID_MENTION' }); return; }
+            mention = { consent: true, name };
+        }
+        if (!brevo.configured()) {
+            console.error('BREVO_API_KEY mancante: richieste di adesione non inviabili');
             fail(res, 500, 'Server configuration incomplete.', { code: 'CONFIG' }); return;
         }
 
+        // Senza pagamento il form e' aperto a tutti: limite di richieste per indirizzo IP e per email.
+        if (store.enabled()) {
+            try {
+                const ipHits = await store.hit(`rl:mb:ip:${secure.hash(clientIp(req))}`, 3600);
+                const mailHits = await store.hit(`rl:mb:em:${secure.hash(m.email)}`, 86400);
+                if (ipHits > LIMIT_IP_PER_HOUR || mailHits > LIMIT_EMAIL_PER_DAY) {
+                    console.warn('Adesione: troppe richieste', ipHits, mailHits);
+                    fail(res, 429, 'Too many requests.', { code: 'RATE_LIMIT' }); return;
+                }
+            } catch (err) {
+                console.error('Adesione: limite non verificabile (database)', err.message);
+            }
+        }
+
         const lang = config.normalizeLang(body.lang);
-        const fee = config.membershipFee();
-        const year = membershipYear();
         const person = {
             firstName: clean(m.firstName, 100),
             lastName: clean(m.lastName, 100),
@@ -86,31 +122,58 @@ module.exports = async (req, res) => {
             email: clean(m.email, 100),
             phone: clean(m.phone, 30)
         };
+        const ctx = {
+            type: 'application', lang, person, mention,
+            newsletter: m.newsletter === true,
+            fee: config.membershipFee(),
+            year: associationYear(),
+            reference: newReference()
+        };
+        const statutesUrl = config.statutesUrl(lang);
+        const from = { email: config.mail.from(), name: config.mail.fromName() };
+        const name = mails.fullName(person);
 
-        const result = await orders.startPayment(req, {
-            ctx: { type: 'member', lang, amount: fee, year, person, newsletter: m.newsletter === true },
-            description: `Orchestra Aurea Mitgliederbeitrag ${year}`,
-            billingAddress: {
-                FirstName: person.firstName,
-                LastName: person.lastName,
-                Street: person.address,
-                Zip: person.postalCode,
-                City: person.city,
-                CountryCode: country,
-                Email: person.email
+        // Lista Gönner: voce in bozza senza livello; il Vorstand la pubblica dopo l'ammissione.
+        let supporter = null;
+        if (mention.consent) {
+            supporter = { requested: true, name: mention.name };
+            try {
+                Object.assign(supporter, await webflow.upsertSupporter({
+                    name: mention.name, lastName: person.lastName, email: person.email, level: null, member: true
+                }));
+            } catch (err) {
+                console.error('Gönner (adesione):', err.message);
+                supporter.action = 'error';
             }
-        });
-
-        if (result.cookies.length) res.setHeader('Set-Cookie', result.cookies);
-        res.status(200).json({ redirectUrl: result.redirectUrl });
-    } catch (err) {
-        console.error('Errore in /api/membership', err.name, err.message, err.raw ? JSON.stringify(err.raw) : '');
-        if (err instanceof saferpay.SaferpayError) {
-            fail(res, 502, 'Payment provider error.', { code: 'PROVIDER' }); return;
         }
-        fail(res, 500, 'Internal error.', { code: 'INTERNAL' });
+
+        const toPerson = mails.applicationEmail({ ctx, statutesUrl });
+        const toAdmin = mails.applicationAdminEmail({ ctx, supporter });
+        const attachments = statutesUrl && /\.pdf(\?|$)/i.test(statutesUrl)
+            ? [{ url: statutesUrl, name: 'Statuten-Orchestra-Aurea.pdf' }] : undefined;
+
+        await brevo.sendEmail({
+            from, to: [{ email: config.mail.admin() }], replyTo: { email: person.email, name },
+            subject: toAdmin.subject, html: toAdmin.html, text: toAdmin.text, tags: ['oa-application-admin']
+        });
+        const results = await Promise.allSettled([
+            brevo.sendEmail({
+                from, to: [{ email: person.email, name }], replyTo: { email: config.mail.admin(), name: config.mail.fromName() },
+                subject: toPerson.subject, html: toPerson.html, text: toPerson.text, attachments, tags: ['oa-application']
+            }),
+            ctx.newsletter ? newsletter.requestOptIn({
+                email: person.email, firstName: person.firstName, lastName: person.lastName,
+                lang, source: 'member', base: baseUrl(req)
+            }) : Promise.resolve()
+        ]);
+        results.filter((r) => r.status === 'rejected').forEach((r) => console.error('Adesione: invio secondario fallito', r.reason && r.reason.message));
+
+        res.status(200).json({ ok: true, reference: ctx.reference });
+    } catch (err) {
+        console.error('Errore in /api/membership', err.name, err.message);
+        fail(res, 502, 'Could not send application.', { code: 'SEND_FAILED' });
     }
 };
 
 module.exports.validBirthDate = validBirthDate;
-module.exports.validPhone = validPhone;
+module.exports.associationYear = associationYear;
