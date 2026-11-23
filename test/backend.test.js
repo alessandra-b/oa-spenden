@@ -99,6 +99,10 @@ test('richiesta di adesione: nessun pagamento, conferma + avviso + newsletter, b
     assert.match(person.htmlContent, /Anna Muster/);
     assert.equal(person.attachment[0].name, 'Statuten-Orchestra-Aurea.pdf');
     assert.match(admin.subject, /^Neue Mitgliedschaftsanfrage: Anna Muster/);
+    assert.equal(admin.to[0].email, 'members@orchestra-aurea.ch');
+    assert.equal(admin.sender.email, 'members@orchestra-aurea.ch');
+    assert.equal(person.sender.email, 'members@orchestra-aurea.ch');
+    assert.equal(person.replyTo.email, 'members@orchestra-aurea.ch');
     assert.match(admin.htmlContent, /QR-Einzahlungsschein/);
     assert.match(admin.htmlContent, /Mitglied bis/);
     assert.match(admin.htmlContent, /\+41 79 123 45 67/);

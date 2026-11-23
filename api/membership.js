@@ -152,13 +152,24 @@ module.exports = async (req, res) => {
         const attachments = statutesUrl && /\.pdf(\?|$)/i.test(statutesUrl)
             ? [{ url: statutesUrl, name: 'Statuten-Orchestra-Aurea.pdf' }] : undefined;
 
-        await brevo.sendEmail({
-            from, to: [{ email: config.mail.admin() }], replyTo: { email: person.email, name },
+        // Mittente members@ (verificato su Brevo); se Brevo lo rifiuta si ripiega sul mittente generale.
+        const members = config.mail.members();
+        const send = async (msg) => {
+            try {
+                return await brevo.sendEmail(Object.assign({ from: { email: members, name: config.mail.fromName() } }, msg));
+            } catch (err) {
+                if (members === from.email || err.status !== 400) throw err;
+                console.error('Adesione: mittente', members, 'rifiutato da Brevo, uso', from.email, err.message);
+                return brevo.sendEmail(Object.assign({ from }, msg));
+            }
+        };
+        await send({
+            to: [{ email: members }], replyTo: { email: person.email, name },
             subject: toAdmin.subject, html: toAdmin.html, text: toAdmin.text, tags: ['oa-application-admin']
         });
         const results = await Promise.allSettled([
-            brevo.sendEmail({
-                from, to: [{ email: person.email, name }], replyTo: { email: config.mail.admin(), name: config.mail.fromName() },
+            send({
+                to: [{ email: person.email, name }], replyTo: { email: members, name: config.mail.fromName() },
                 subject: toPerson.subject, html: toPerson.html, text: toPerson.text, attachments, tags: ['oa-application']
             }),
             ctx.newsletter ? newsletter.requestOptIn({
