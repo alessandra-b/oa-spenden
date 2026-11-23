@@ -96,6 +96,10 @@
       postalCode: 'CAP',
       city: 'Città',
       email: 'Email',
+      phone: 'Telefono',
+      message: 'Messaggio (facoltativo)',
+      mentionConsent: 'Accetto che il mio nome sia citato sul sito di Orchestra Aurea tra le sostenitrici e i sostenitori. Posso revocare il consenso in qualsiasi momento.',
+      mentionName: 'Nome da citare',
       chooseContribution: 'Scegli il tuo contributo',
       customAmount: 'Oppure scrivi il tuo importo',
       customAmountFree: 'Scrivi il tuo importo',
@@ -116,6 +120,8 @@
       termsAndConditions: 'Termini e Condizioni',
       completeFields: 'Compila tutti i campi obbligatori prima di continuare.',
       validEmail: 'Inserisci un indirizzo email valido.',
+      validPhone: 'Controlla il numero di telefono.',
+      mentionNameMissing: 'Indica con quale nome possiamo citarti.',
       noAmountSelected: 'Non hai selezionato nessun importo: scegli il tuo contributo.',
       atLeastAmount: 'Inserisci almeno CHF {min}.',
       amountTooHigh: 'Per importi superiori a CHF {max} contattaci direttamente.',
@@ -137,6 +143,10 @@
       postalCode: 'Postal code',
       city: 'City',
       email: 'Email',
+      phone: 'Phone',
+      message: 'Message (optional)',
+      mentionConsent: 'I agree that my name may be listed on the Orchestra Aurea website among its supporters. I can withdraw this consent at any time.',
+      mentionName: 'Name to be listed',
       chooseContribution: 'Choose your contribution',
       customAmount: 'Or enter your own amount',
       customAmountFree: 'Enter your amount',
@@ -157,6 +167,8 @@
       termsAndConditions: 'Terms & Conditions',
       completeFields: 'Please complete all required fields before continuing.',
       validEmail: 'Please enter a valid email address.',
+      validPhone: 'Please check the phone number.',
+      mentionNameMissing: 'Please tell us the name under which we may list you.',
       noAmountSelected: 'You haven\'t selected an amount yet. Please choose your contribution.',
       atLeastAmount: 'Please enter at least CHF {min}.',
       amountTooHigh: 'For amounts above CHF {max} please contact us directly.',
@@ -178,6 +190,10 @@
       postalCode: 'PLZ',
       city: 'Ort',
       email: 'E-Mail',
+      phone: 'Telefon',
+      message: 'Mitteilung (optional)',
+      mentionConsent: 'Ich bin einverstanden, dass mein Name auf der Website von Orchestra Aurea als Gönnerin oder Gönner genannt wird. Diese Zustimmung kann ich jederzeit widerrufen.',
+      mentionName: 'Name für die Nennung',
       chooseContribution: 'Wählen Sie Ihren Beitrag',
       customAmount: 'Oder eigenen Betrag eingeben',
       customAmountFree: 'Betrag eingeben',
@@ -198,6 +214,8 @@
       termsAndConditions: 'Allgemeinen Geschäftsbedingungen',
       completeFields: 'Bitte füllen Sie alle Pflichtfelder aus, bevor Sie fortfahren.',
       validEmail: 'Bitte geben Sie eine gültige E-Mail-Adresse ein.',
+      validPhone: 'Bitte prüfen Sie die Telefonnummer.',
+      mentionNameMissing: 'Bitte geben Sie an, unter welchem Namen wir Sie nennen dürfen.',
       noAmountSelected: 'Sie haben noch keinen Betrag ausgewählt. Bitte wählen Sie Ihren Beitrag.',
       atLeastAmount: 'Bitte geben Sie einen Betrag von mindestens CHF {min} ein.',
       amountTooHigh: 'Für Beträge über CHF {max} kontaktieren Sie uns bitte direkt.',
@@ -226,7 +244,7 @@
 
   // ---- STATO --------------------------------------------------------------
   function emptyDetails() {
-    return { firstName: '', lastName: '', address: '', postalCode: '', city: '', email: '' };
+    return { firstName: '', lastName: '', address: '', postalCode: '', city: '', email: '', phone: '' };
   }
   var state = {
     level: 'ECHO',
@@ -234,6 +252,10 @@
     customAmount: '',
     details: emptyDetails(),
     newsletter: false,
+    message: '',
+    mention: false,
+    mentionName: '',
+    mentionNameEdited: false,
     termsAccepted: false,
     submitting: false
   };
@@ -248,7 +270,11 @@
         selectedAmount: state.selectedAmount,
         customAmount: state.customAmount,
         details: state.details,
-        newsletter: state.newsletter
+        newsletter: state.newsletter,
+        message: state.message,
+        mention: state.mention,
+        mentionName: state.mentionName,
+        mentionNameEdited: state.mentionNameEdited
       }));
     } catch (e) { /* storage non disponibile: nessun problema */ }
   }
@@ -298,6 +324,8 @@
     '.oa-root .oa-input{display:block;width:100%;height:auto;margin:0;padding:.75rem 1rem;border:1px solid var(--oa-gold);border-radius:8px;' +
     'background:var(--oa-paper);color:var(--oa-ink);font:inherit;font-size:1rem;line-height:1.4;-webkit-appearance:none;appearance:none}' +
     '.oa-root .oa-input::placeholder{color:var(--oa-ink);opacity:.6}' +
+    '.oa-root textarea.oa-input{min-height:6.5rem;resize:vertical}' +
+    '.oa-root .oa-mention-name{margin-top:.75rem}' +
     '.oa-root .oa-amount-input{font-weight:500}' +
     '.oa-root .oa-amount-input{-moz-appearance:textfield}' +
     '.oa-root .oa-amount-input::-webkit-outer-spin-button,.oa-root .oa-amount-input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}' +
@@ -363,8 +391,14 @@
             '<input class="oa-input" id="oa-city" name="city" type="text" autocomplete="address-level2" required>' +
           '</div>' +
           '<input class="oa-input" id="oa-email" name="email" type="email" autocomplete="email" required>' +
+          '<input class="oa-input" id="oa-phone" name="phone" type="tel" autocomplete="tel" required>' +
+          '<textarea class="oa-input" id="oa-message" name="message" maxlength="500" rows="3"></textarea>' +
         '</div>' +
         '<label class="oa-check"><input type="checkbox" id="oa-newsletter"><span><span id="oa-newsletter-prefix"></span><a id="oa-privacy-link" href="#" target="_blank" rel="noopener noreferrer"></a><span id="oa-newsletter-suffix"></span></span></label>' +
+        '<div id="oa-mention-wrap" class="oa-hidden">' +
+          '<label class="oa-check"><input type="checkbox" id="oa-mention"><span id="oa-mention-text"></span></label>' +
+          '<input class="oa-input oa-mention-name oa-hidden" id="oa-mention-name" name="mentionName" type="text" maxlength="100" autocomplete="name">' +
+        '</div>' +
       '</section>' +
       // 3. Testi Saferpay + termini + pagamento
       '<section class="oa-section">' +
@@ -402,7 +436,8 @@
       amountTitle: $('oa-amount-title'), presets: $('oa-presets'), amount: $('oa-amount'), minNote: $('oa-min-note'),
       detailsTitle: $('oa-details-title'),
       firstName: $('oa-firstName'), lastName: $('oa-lastName'), address: $('oa-address'),
-      postalCode: $('oa-postalCode'), city: $('oa-city'), email: $('oa-email'),
+      postalCode: $('oa-postalCode'), city: $('oa-city'), email: $('oa-email'), phone: $('oa-phone'),
+      message: $('oa-message'), mentionWrap: $('oa-mention-wrap'), mention: $('oa-mention'), mentionText: $('oa-mention-text'), mentionName: $('oa-mention-name'),
       newsletter: $('oa-newsletter'), newsletterPrefix: $('oa-newsletter-prefix'), privacyLink: $('oa-privacy-link'), newsletterSuffix: $('oa-newsletter-suffix'),
       saferpay: $('oa-saferpay'), charges: $('oa-charges'),
       terms: $('oa-terms'), termsPrefix: $('oa-terms-prefix'), termsLink: $('oa-terms-link'),
@@ -410,7 +445,7 @@
       doc: $('oa-doc'), docTitle: $('oa-doc-title'), docBody: $('oa-doc-body'),
       docCloseTop: $('oa-doc-close-top'), docCloseBottom: $('oa-doc-close-bottom')
     };
-    var detailKeys = ['firstName', 'lastName', 'address', 'postalCode', 'city', 'email'];
+    var detailKeys = ['firstName', 'lastName', 'address', 'postalCode', 'city', 'email', 'phone'];
 
     // Testi statici (cambiano solo con la lingua)
     el.form.setAttribute('aria-label', t.proceedDonationPayment);
@@ -422,6 +457,11 @@
       el[k].setAttribute('placeholder', t[k]);
       el[k].setAttribute('aria-label', t[k]);
     });
+    el.message.setAttribute('placeholder', t.message);
+    el.message.setAttribute('aria-label', t.message);
+    el.mentionText.textContent = t.mentionConsent;
+    el.mentionName.setAttribute('placeholder', t.mentionName);
+    el.mentionName.setAttribute('aria-label', t.mentionName);
     el.newsletterPrefix.textContent = t.newsletterPrefix;
     el.privacyLink.textContent = t.privacyLink;
     el.privacyLink.setAttribute('href', CONFIG.privacy[lang]);
@@ -456,6 +496,25 @@
       return a > 0 ? tierFor(a) : state.level;
     }
     function validEmail(v) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim()); }
+    // Stesse regole del form soci e del server: cifre, spazi, + ( ) . / -, almeno 6 cifre.
+    function validPhone(v) {
+      v = v.trim();
+      return /^[+0-9 ()./-]{6,30}$/.test(v) && (v.match(/\d/g) || []).length >= 6;
+    }
+    // La menzione sul sito vale solo da PULSE in su (ECHO non viene nominato).
+    function mentionAllowed() { return RANK[effectiveLevel()] >= RANK.PULSE; }
+    function defaultMentionName() {
+      return (state.details.firstName.trim() + ' ' + state.details.lastName.trim()).trim();
+    }
+    function renderMention() {
+      var allowed = mentionAllowed();
+      el.mentionWrap.classList.toggle('oa-hidden', !allowed);
+      el.mentionName.classList.toggle('oa-hidden', !(allowed && state.mention));
+      if (!state.mentionNameEdited) {
+        state.mentionName = defaultMentionName();
+        if (document.activeElement !== el.mentionName) el.mentionName.value = state.mentionName;
+      }
+    }
     function fmt(template, vars) {
       return template.replace(/\{(\w+)\}/g, function (_, k) { return vars[k]; });
     }
@@ -520,6 +579,7 @@
       el.minNote.textContent = tierNote(eff);
       el.minNote.classList.toggle('oa-tier-change', eff !== state.level);
       renderPresets();
+      renderMention();
       el.pay.textContent = state.submitting
         ? t.redirecting
         : t.proceedPayment + (currentAmount() > 0 ? ' CHF ' + currentAmount() : '');
@@ -530,6 +590,9 @@
       detailKeys.forEach(function (k) { el[k].value = state.details[k] || ''; });
       el.amount.value = state.selectedAmount != null ? '' : state.customAmount;
       el.newsletter.checked = !!state.newsletter;
+      el.message.value = state.message || '';
+      el.mention.checked = !!state.mention;
+      el.mentionName.value = state.mentionName || '';
       el.terms.checked = !!state.termsAccepted;
     }
 
@@ -550,6 +613,10 @@
       // Dati personali e newsletter si riprendono dalla bozza; l'importo solo se e' dello stesso livello.
       state.details = draft && draft.details ? Object.assign(emptyDetails(), draft.details) : emptyDetails();
       state.newsletter = draft ? !!draft.newsletter : false;
+      state.message = draft && draft.message ? String(draft.message) : '';
+      state.mention = draft ? !!draft.mention : false;
+      state.mentionNameEdited = draft ? !!draft.mentionNameEdited : false;
+      state.mentionName = draft && draft.mentionName ? String(draft.mentionName) : '';
       if (draft && draft.level === state.level) {
         state.selectedAmount = draft.selectedAmount;
         state.customAmount = draft.customAmount || '';
@@ -591,6 +658,17 @@
         el.email.focus();
         return;
       }
+      if (!validPhone(d.phone)) {
+        showError(t.validPhone);
+        el.phone.focus();
+        return;
+      }
+      var mentionOn = mentionAllowed() && state.mention;
+      if (mentionOn && !state.mentionName.trim()) {
+        showError(t.mentionNameMissing);
+        el.mentionName.focus();
+        return;
+      }
       if (!state.termsAccepted) {
         showError(t.acceptTermsError);
         el.terms.focus();
@@ -616,8 +694,11 @@
             postalCode: d.postalCode.trim(),
             city: d.city.trim(),
             email: d.email.trim(),
+            phone: d.phone.trim(),
             newsletter: !!state.newsletter
           },
+          message: state.message.trim().slice(0, 500),
+          mention: mentionOn ? { consent: true, name: state.mentionName.trim().slice(0, 100) } : { consent: false },
           termsAccepted: true
         })
       })
@@ -629,6 +710,8 @@
             var p = result.payload || {};
             if (p.code === 'AMOUNT_TOO_HIGH') showError(fmt(t.amountTooHigh, { max: p.max }));
             else if (p.code === 'AMOUNT_TOO_LOW') showError(fmt(t.atLeastAmount, { min: p.min }));
+            else if (p.code === 'INVALID_PHONE') { showError(t.validPhone); el.phone.focus(); }
+            else if (p.code === 'INVALID_MENTION') { showError(t.mentionNameMissing); el.mentionName.focus(); }
             else showError(t.unableToStartPayment);
             state.submitting = false;
             render();
@@ -653,6 +736,7 @@
     detailKeys.forEach(function (k) {
       el[k].addEventListener('input', function (e) {
         state.details[k] = e.target.value;
+        if (k === 'firstName' || k === 'lastName') renderMention();
         saveDraft();
       });
     });
@@ -664,6 +748,13 @@
       render();
     });
     el.newsletter.addEventListener('change', function (e) { state.newsletter = e.target.checked; saveDraft(); });
+    el.message.addEventListener('input', function (e) { state.message = e.target.value; saveDraft(); });
+    el.mention.addEventListener('change', function (e) { state.mention = e.target.checked; saveDraft(); renderMention(); });
+    el.mentionName.addEventListener('input', function (e) {
+      state.mentionName = e.target.value;
+      state.mentionNameEdited = e.target.value.trim() !== '' && e.target.value.trim() !== defaultMentionName();
+      saveDraft();
+    });
     el.terms.addEventListener('change', function (e) { state.termsAccepted = e.target.checked; });
     el.form.addEventListener('submit', submit);
 

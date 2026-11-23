@@ -7,7 +7,7 @@
 const config = require('../lib/config');
 const saferpay = require('../lib/saferpay');
 const orders = require('../lib/orders');
-const { setCors, fail, isNonEmptyString, isValidEmail, clean } = require('../lib/http');
+const { setCors, fail, isNonEmptyString, isValidEmail, isValidPhone, clean, cleanMultiline } = require('../lib/http');
 
 // Il livello dipende SOLO dall'importo (CHF): >= 1000 RESONANCE, >= 500 FLOW, >= 100 PULSE,
 // altrimenti ECHO. Stesse soglie di public/donation-form.js.
@@ -46,12 +46,15 @@ module.exports = async (req, res) => {
         if (body.termsAccepted !== true) {
             fail(res, 400, 'Terms must be accepted.', { code: 'TERMS_NOT_ACCEPTED' }); return;
         }
-        const required = ['firstName', 'lastName', 'address', 'postalCode', 'city', 'email'];
+        const required = ['firstName', 'lastName', 'address', 'postalCode', 'city', 'email', 'phone'];
         if (!required.every((key) => isNonEmptyString(donor[key]))) {
             fail(res, 400, 'Missing donor details.', { code: 'MISSING_DONOR' }); return;
         }
         if (!isValidEmail(donor.email)) {
             fail(res, 400, 'Invalid email.', { code: 'INVALID_EMAIL' }); return;
+        }
+        if (!isValidPhone(donor.phone)) {
+            fail(res, 400, 'Invalid phone.', { code: 'INVALID_PHONE' }); return;
         }
         if (!saferpay.configured()) {
             console.error('Mancano le variabili SAFERPAY_* su Vercel');
@@ -60,6 +63,14 @@ module.exports = async (req, res) => {
 
         const lang = config.normalizeLang(body.lang);
         const level = tierFor(amount);
+        // Menzione sul sito (lista Gönner): solo da PULSE in su e solo con un nome.
+        const mentionIn = body.mention && typeof body.mention === 'object' ? body.mention : {};
+        let mention = { consent: false };
+        if (mentionIn.consent === true && level !== 'ECHO') {
+            const mentionName = clean(mentionIn.name, 100);
+            if (!mentionName) { fail(res, 400, 'Missing mention name.', { code: 'INVALID_MENTION' }); return; }
+            mention = { consent: true, name: mentionName };
+        }
         const person = {
             firstName: clean(donor.firstName, 100),
             lastName: clean(donor.lastName, 100),
@@ -67,11 +78,12 @@ module.exports = async (req, res) => {
             postalCode: clean(donor.postalCode, 20),
             city: clean(donor.city, 100),
             country: 'CH', // il form donazioni non chiede il paese (come il form precedente)
-            email: clean(donor.email, 100)
+            email: clean(donor.email, 100),
+            phone: clean(donor.phone, 30)
         };
 
         const result = await orders.startPayment(req, {
-            ctx: { type: 'donation', lang, amount, level, person, newsletter: donor.newsletter === true },
+            ctx: { type: 'donation', lang, amount, level, person, newsletter: donor.newsletter === true, message: cleanMultiline(body.message, 500), mention },
             description: `Orchestra Aurea Spende (${level})`,
             billingAddress: {
                 FirstName: person.firstName,
@@ -80,7 +92,8 @@ module.exports = async (req, res) => {
                 Zip: person.postalCode,
                 City: person.city,
                 CountryCode: 'CH',
-                Email: person.email
+                Email: person.email,
+                Phone: person.phone
             }
         });
 

@@ -15,7 +15,8 @@ function createMocks() {
     const state = {
         saferpay: { calls: [], tx: {}, seq: 0, failNext: {} },
         brevo: { emails: [], contacts: [], calls: [], failEmails: 0, attributes: ['EMAIL', 'NOME', 'COGNOME'], lists: [], folders: [{ id: 1, name: 'Your first folder' }] },
-        redis: { data: new Map(), calls: [] }
+        redis: { data: new Map(), calls: [] },
+        webflow: { items: [], calls: [], fail: false }
     };
 
     async function saferpay(url, body) {
@@ -101,9 +102,34 @@ function createMocks() {
         return jsonResponse(400, { error: 'unknown command' });
     }
 
+    // Webflow CMS finto: collection Gönner con il campo opzioni «stufe-tier».
+    async function webflow(url, init) {
+        const path = url.replace('https://api.webflow.com/v2', '');
+        const method = init.method || 'GET';
+        const body = init.body ? JSON.parse(init.body) : undefined;
+        state.webflow.calls.push({ method, path, body });
+        if (state.webflow.fail) return jsonResponse(500, { message: 'boom' });
+        if (method === 'GET' && /^\/collections\/[^/]+$/.test(path)) {
+            return jsonResponse(200, { fields: [{ slug: 'stufe-tier', validations: { options: [
+                { name: 'Pulse', id: 'opt-pulse' }, { name: 'Flow', id: 'opt-flow' }, { name: 'Resonance', id: 'opt-res' }] } }] });
+        }
+        if (method === 'GET' && /\/items\?/.test(path)) return jsonResponse(200, { items: state.webflow.items });
+        if (method === 'POST' && /\/items\/bulk$/.test(path)) {
+            const item = { id: 'item' + (state.webflow.items.length + 1), isDraft: body.isDraft, fieldData: body.fieldData, cmsLocaleIds: body.cmsLocaleIds };
+            state.webflow.items.push(item);
+            return jsonResponse(202, { id: item.id });
+        }
+        if (method === 'PATCH' && /\/items$/.test(path)) {
+            body.items.forEach((u) => { const it = state.webflow.items.find((i) => i.id === u.id); if (it) Object.assign(it.fieldData, u.fieldData); });
+            return jsonResponse(200, { items: body.items });
+        }
+        return jsonResponse(404, { message: 'not found' });
+    }
+
     global.fetch = async (url, init = {}) => {
         if (/saferpay\.com/.test(url)) return saferpay(url, JSON.parse(init.body));
         if (/api\.brevo\.com/.test(url)) return brevo(url, init);
+        if (url.startsWith('https://api.webflow.com/v2')) return webflow(url, init);
         if (url.startsWith('https://redis.test')) {
             if (state.redis.down) throw new Error('redis down');
             return redis(init);
@@ -145,7 +171,7 @@ function setEnv(extra) {
         OA_SECRET: 'test-secret-0123456789-abcdefghij'
     };
     const keys = ['KV_REST_API_URL', 'KV_REST_API_TOKEN', 'UPSTASH_REDIS_REST_URL', 'UPSTASH_REDIS_REST_TOKEN', 'STATUTEN_URL',
-        'MEMBER_RETURN_PAGE_URL', 'SITE_URL', 'BREVO_NEWSLETTER_LIST_ID', 'MEMBERSHIP_FEE_CHF', 'MAIL_TO_ADMIN'];
+        'MEMBER_RETURN_PAGE_URL', 'SITE_URL', 'BREVO_NEWSLETTER_LIST_ID', 'MEMBERSHIP_FEE_CHF', 'MAIL_TO_ADMIN', 'WEBFLOW_API_TOKEN'];
     keys.forEach((k) => delete process.env[k]);
     Object.assign(process.env, base, extra || {});
 }

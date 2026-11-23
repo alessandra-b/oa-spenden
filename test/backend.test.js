@@ -17,7 +17,7 @@ const MEMBER = {
     firstName: 'Anna', lastName: 'Muster', address: 'Bahnhofstrasse 1', postalCode: '6003', city: 'Luzern',
     country: 'CH', birthDate: '1958-04-23', email: 'anna@example.ch', phone: '+41 79 123 45 67', newsletter: true
 };
-const DONOR = { firstName: 'Bruno', lastName: 'Rossi', address: 'Via Roma 2', postalCode: '6900', city: 'Lugano', email: 'bruno@example.ch', newsletter: false };
+const DONOR = { firstName: 'Bruno', lastName: 'Rossi', address: 'Via Roma 2', postalCode: '6900', city: 'Lugano', email: 'bruno@example.ch', phone: '+41 91 123 45 67', newsletter: false };
 
 function memberBody(over) {
     return Object.assign({ lang: 'de', member: Object.assign({}, MEMBER), statutesAccepted: true, termsAccepted: true }, over || {});
@@ -251,6 +251,86 @@ test('donazione: controlli invariati (minimo, massimo, termini)', async () => {
     assert.equal(res.body.max, 100000);
     res = await call(session, { body: { amount: 50, donor: DONOR, termsAccepted: false } });
     assert.equal(res.body.code, 'TERMS_NOT_ACCEPTED');
+});
+
+test('donazione: telefono obbligatorio e valido, menzione solo con nome', async () => {
+    setEnv();
+    createMocks();
+    let res = await call(session, { body: { amount: 50, donor: Object.assign({}, DONOR, { phone: '' }), termsAccepted: true } });
+    assert.equal(res.body.code, 'MISSING_DONOR');
+    res = await call(session, { body: { amount: 50, donor: Object.assign({}, DONOR, { phone: 'abc' }), termsAccepted: true } });
+    assert.equal(res.body.code, 'INVALID_PHONE');
+    res = await call(session, { body: { amount: 150, donor: DONOR, termsAccepted: true, mention: { consent: true, name: '  ' } } });
+    assert.equal(res.body.code, 'INVALID_MENTION');
+    // ECHO: la menzione si ignora (nessun errore anche senza nome)
+    res = await call(session, { body: { amount: 50, donor: DONOR, termsAccepted: true, mention: { consent: true } } });
+    assert.equal(res.statusCode, 200);
+});
+
+test('donazione PULSE con menzione: bozza nella lista Gönner, messaggio e telefono nelle email', async () => {
+    setEnv(Object.assign({ WEBFLOW_API_TOKEN: 'wf-test' }, REDIS));
+    const state = createMocks();
+    const start = await call(session, { body: {
+        amount: 150, lang: 'it', donor: DONOR, termsAccepted: true,
+        message: 'Bravi!\nContinuate così.', mention: { consent: true, name: 'Famiglia Rossi' }
+    } });
+    assert.equal(start.statusCode, 200);
+    const init = lastInit(state);
+    pay(state, 'tok1');
+    await call(ret, { method: 'GET', query: returnQuery(init.ReturnUrl.Url) });
+    assert.equal(state.webflow.items.length, 1);
+    const item = state.webflow.items[0];
+    assert.equal(item.isDraft, true);
+    assert.equal(item.fieldData.name, 'Famiglia Rossi');
+    assert.equal(item.fieldData['stufe-tier'], 'opt-pulse');
+    assert.equal(item.fieldData['rang-rank'], 1);
+    assert.equal(item.fieldData['nachname-surname'], 'Rossi');
+    assert.match(item.fieldData['referenz-reference'], /^oa1-[0-9a-f]{32}$/);
+    assert.ok(!JSON.stringify(item).includes('bruno@example.ch'), 'email mai nel CMS');
+    assert.equal(item.cmsLocaleIds.length, 3);
+    const donor = state.brevo.emails.find((e) => e.tags.includes('oa-donation'));
+    const admin = state.brevo.emails.find((e) => e.tags.includes('oa-donation-admin'));
+    assert.match(donor.htmlContent, /Famiglia Rossi/);
+    assert.match(donor.htmlContent, /\+41 91 123 45 67/);
+    assert.match(donor.htmlContent, /Bravi!<br>Continuate così\./);
+    assert.match(admin.htmlContent, /Entwurf in der Gönner-Liste erstellt/);
+    assert.match(admin.htmlContent, /Mitteilung/);
+    assert.match(admin.htmlContent, /Telefon/);
+    // seconda donazione della stessa persona, livello piu' alto: aggiorna, non duplica
+    const start2 = await call(session, { body: { amount: 600, lang: 'it', donor: DONOR, termsAccepted: true, mention: { consent: true, name: 'Altro nome' } } });
+    assert.equal(start2.statusCode, 200);
+    const init2 = lastInit(state);
+    pay(state, 'tok2');
+    await call(ret, { method: 'GET', query: returnQuery(init2.ReturnUrl.Url) });
+    assert.equal(state.webflow.items.length, 1);
+    assert.equal(item.fieldData['stufe-tier'], 'opt-flow');
+    assert.equal(item.fieldData['rang-rank'], 2);
+    assert.equal(item.fieldData.name, 'Famiglia Rossi', 'il nome gia\' controllato non si cambia');
+});
+
+test('donazione: errore di Webflow non blocca il pagamento, avviso chiede inserimento a mano', async () => {
+    setEnv(Object.assign({ WEBFLOW_API_TOKEN: 'wf-test' }, REDIS));
+    const state = createMocks();
+    state.webflow.fail = true;
+    await call(session, { body: { amount: 1200, lang: 'de', donor: DONOR, termsAccepted: true, mention: { consent: true, name: 'Bruno Rossi' } } });
+    const init = lastInit(state);
+    pay(state, 'tok1');
+    const r = await call(ret, { method: 'GET', query: returnQuery(init.ReturnUrl.Url) });
+    assert.equal(r.headers.location, 'https://neu.orchestra-aurea.ch/de/danke?status=success');
+    const admin = state.brevo.emails.find((e) => e.tags.includes('oa-donation-admin'));
+    assert.match(admin.htmlContent, /von Hand eintragen/);
+});
+
+test('donazione senza consenso: nessuna chiamata a Webflow', async () => {
+    setEnv(Object.assign({ WEBFLOW_API_TOKEN: 'wf-test' }, REDIS));
+    const state = createMocks();
+    await call(session, { body: { amount: 150, lang: 'de', donor: DONOR, termsAccepted: true } });
+    const init = lastInit(state);
+    pay(state, 'tok1');
+    await call(ret, { method: 'GET', query: returnQuery(init.ReturnUrl.Url) });
+    assert.equal(state.webflow.calls.length, 0);
+    const admin = state.brevo.emails.find((e) => e.tags.includes('oa-donation-admin'));
+    assert.match(admin.htmlContent, /möchte anonym bleiben/);
 });
 
 test('vecchio flusso (cookie oa_donation_token, senza ?o=) funziona ancora', async () => {
