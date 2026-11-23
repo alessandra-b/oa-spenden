@@ -111,6 +111,12 @@ test('richiesta di adesione: nessun pagamento, conferma + avviso + newsletter, b
     assert.equal(item.isDraft, true);
     assert.equal(item.fieldData['rang-rank'], 0);
     assert.equal(item.fieldData['stufe-tier'], undefined);
+    const appList = state.brevo.lists.find((l) => l.name === 'Mitgliedschaftsanfragen Orchestra Aurea');
+    assert.ok(appList, 'lista richieste creata');
+    const applicant = state.brevo.contacts.find((c) => c.listIds.includes(appList.id));
+    assert.equal(applicant.attributes.TELEFON, '+41 79 123 45 67');
+    assert.equal(applicant.attributes.ANFRAGE_REFERENZ, res.body.reference);
+    assert.equal(applicant.emailBlacklisted, undefined);
     const nl = state.brevo.emails.find((e) => e.tags.includes('oa-newsletter-optin'));
     assert.ok(nl, 'conferma newsletter richiesta');
 });
@@ -342,6 +348,16 @@ test('donazione PULSE con menzione: bozza nella lista Gönner, messaggio e telef
     assert.match(admin.htmlContent, /Entwurf in der Gönner-Liste erstellt/);
     assert.match(admin.htmlContent, /Mitteilung/);
     assert.match(admin.htmlContent, /Telefon/);
+    // lista Brevo dei donatori, separata dalla newsletter, senza riattivare i disiscritti
+    const donorList = state.brevo.lists.find((l) => l.name === 'Spender Orchestra Aurea');
+    assert.ok(donorList, 'lista donatori creata');
+    const contact = state.brevo.contacts.find((c) => c.listIds.includes(donorList.id));
+    assert.equal(contact.email, 'bruno@example.ch');
+    assert.equal(contact.attributes.SPENDEN_STUFE, 'PULSE');
+    assert.equal(contact.attributes.TELEFON, '+41 91 123 45 67');
+    assert.match(contact.attributes.LETZTE_SPENDE, /^\d{4}-\d{2}-\d{2}$/);
+    assert.equal(contact.emailBlacklisted, undefined);
+    assert.ok(!state.brevo.lists.some((l) => l.name === 'Newsletter Orchestra Aurea'), 'nessuna iscrizione alla newsletter');
     // seconda donazione della stessa persona, livello piu' alto: aggiorna, non duplica
     const start2 = await call(session, { body: { amount: 600, lang: 'it', donor: DONOR, termsAccepted: true, mention: { consent: true, name: 'Altro nome' } } });
     assert.equal(start2.statusCode, 200);

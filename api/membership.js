@@ -172,6 +172,14 @@ module.exports = async (req, res) => {
                 to: [{ email: person.email, name }], replyTo: { email: members, name: config.mail.fromName() },
                 subject: toPerson.subject, html: toPerson.html, text: toPerson.text, attachments, tags: ['oa-application']
             }),
+            brevo.addToList('applications', {
+                email: person.email, firstName: person.firstName, lastName: person.lastName, lang,
+                extra: {
+                    TELEFON: { value: person.phone },
+                    ANFRAGE_DATUM: { value: new Date().toISOString().slice(0, 10), type: 'date' },
+                    ANFRAGE_REFERENZ: { value: ctx.reference }
+                }
+            }),
             ctx.newsletter ? newsletter.requestOptIn({
                 email: person.email, firstName: person.firstName, lastName: person.lastName,
                 lang, source: 'member', base: baseUrl(req)
