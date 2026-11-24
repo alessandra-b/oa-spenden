@@ -16,7 +16,7 @@
  *   data-endpoint                 URL di /api/membership (default: spenden.orchestra-aurea.ch)
  *   data-terms-de/-en/-it         pagina AGB              (default: /de|en|it/agb)
  *   data-privacy-de/-en/-it       pagina Datenschutz      (default: /de|en|it/datenschutz)
- *   data-back-de/-en/-it          link "Zurück"           (default: /de|en|it/spenden)
+ *   data-back-de/-en/-it          link "Zurück"           (default: /de|en|it/verein)
  *
  * STILE: stesse variabili del sito e stesso aspetto del form donazioni (donation-form.js).
  * TESTI: le frasi su Saferpay e sui termini sono identiche a quelle del form donazioni.
@@ -213,7 +213,7 @@
     endpoint: attr('data-endpoint') || 'https://spenden.orchestra-aurea.ch/api/membership',
     terms: attr('data-terms-' + lang) || '/' + lang + '/agb',
     privacy: attr('data-privacy-' + lang) || '/' + lang + '/datenschutz',
-    back: attr('data-back-' + lang) || '/' + lang + '/spenden'
+    back: attr('data-back-' + lang) || '/' + lang + '/verein'
   };
 
   // Paesi (ISO 3166-1): stesso elenco di lib/countries.js. I nomi vengono dal browser
