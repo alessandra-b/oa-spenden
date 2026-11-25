@@ -51,6 +51,7 @@
       feeLine: 'Vereinsjahr {year}',
       feeNote: 'Das Vereinsjahr dauert vom 1. August bis 31. Juli. Der Vorstand prüft Ihre Anmeldung; nach der Aufnahme erhalten Sie die Rechnung mit QR-Einzahlungsschein per Post.',
       yourDetails: 'Ihre Angaben',
+      requiredNote: '* Pflichtfelder',
       firstName: 'Vorname',
       lastName: 'Nachname',
       address: 'Strasse und Hausnummer',
@@ -102,6 +103,7 @@
       feeLine: 'Association year {year}',
       feeNote: 'The association year runs from 1 August to 31 July. The board reviews your application; once you are admitted, you will receive the invoice with a QR payment slip by post.',
       yourDetails: 'Your details',
+      requiredNote: '* Required fields',
       firstName: 'First name',
       lastName: 'Last name',
       address: 'Street and number',
@@ -153,6 +155,7 @@
       feeLine: 'Anno associativo {year}',
       feeNote: 'L’anno associativo va dal 1° agosto al 31 luglio. Il comitato direttivo esamina la tua richiesta; dopo l’ammissione riceverai per posta la fattura con la polizza di versamento QR.',
       yourDetails: 'I tuoi dati',
+      requiredNote: '* Campi obbligatori',
       firstName: 'Nome',
       lastName: 'Cognome',
       address: 'Via e numero civico',
@@ -297,6 +300,8 @@
     '.oa-root .oa-fee-amount{font-weight:500;white-space:nowrap}' +
     '.oa-root .oa-input{display:block;width:100%;height:auto;margin:0;padding:.75rem 1rem;border:1px solid var(--oa-gold);border-radius:8px;' +
     'background:var(--oa-paper);color:var(--oa-ink);font:inherit;font-size:1rem;line-height:1.4;-webkit-appearance:none;appearance:none}' +
+    '.oa-root .oa-req{color:var(--oa-gold)}' +
+    '.oa-root .oa-req-note{margin:-.25rem 0 0}' +
     '.oa-root .oa-input::placeholder{color:var(--oa-ink);opacity:.6}' +
     '.oa-root select.oa-input{padding-right:2.75rem;cursor:pointer;background-image:url("data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2714%27 height=%279%27 viewBox=%270 0 14 9%27%3E%3Cpath d=%27M1 1l6 6 6-6%27 fill=%27none%27 stroke=%27%238a6a2a%27 stroke-width=%272%27/%3E%3C/svg%3E");' +
     'background-repeat:no-repeat;background-position:right 1rem center}' +
@@ -350,6 +355,7 @@
       '</section>' +
       '<section class="oa-section">' +
         '<h2 class="oa-section-title" id="oa-details-title"></h2>' +
+        '<p class="oa-note oa-req-note" id="oa-req-note"></p>' +
         '<div class="oa-fields">' +
           '<input class="oa-input" id="oa-firstName" name="firstName" type="text" autocomplete="given-name" required>' +
           '<input class="oa-input" id="oa-lastName" name="lastName" type="text" autocomplete="family-name" required>' +
@@ -377,8 +383,8 @@
         '<input class="oa-input oa-mention-name oa-hidden" id="oa-mention-name" name="mentionName" type="text" maxlength="100" autocomplete="name">' +
       '</section>' +
       '<section class="oa-section">' +
-        '<label class="oa-check"><input type="checkbox" id="oa-statutes"><span><span id="oa-statutes-prefix"></span><a id="oa-statutes-link" href="#" target="_blank" rel="noopener noreferrer"></a><span id="oa-statutes-text" class="oa-hidden"></span><span id="oa-statutes-suffix"></span></span></label>' +
-        '<label class="oa-check"><input type="checkbox" id="oa-terms"><span><span id="oa-terms-prefix"></span> <a id="oa-terms-link" href="#" target="_blank" rel="noopener noreferrer"></a>.</span></label>' +
+        '<label class="oa-check"><input type="checkbox" id="oa-statutes"><span><span id="oa-statutes-prefix"></span><a id="oa-statutes-link" href="#" target="_blank" rel="noopener noreferrer"></a><span id="oa-statutes-text" class="oa-hidden"></span><span id="oa-statutes-suffix"></span><span class="oa-req" aria-hidden="true"> *</span></span></label>' +
+        '<label class="oa-check"><input type="checkbox" id="oa-terms"><span><span id="oa-terms-prefix"></span> <a id="oa-terms-link" href="#" target="_blank" rel="noopener noreferrer"></a>.<span class="oa-req" aria-hidden="true"> *</span></span></label>' +
         '<p class="oa-error oa-hidden" id="oa-error" role="alert"></p>' +
         '<div class="oa-actions"><button type="submit" class="oa-pay" id="oa-pay"></button></div>' +
       '</section>' +
@@ -412,7 +418,7 @@
     var el = {
       form: $('oa-form'), subtitle: $('oa-subtitle'), back: $('oa-back'),
       feeTitle: $('oa-fee-title'), feeLine: $('oa-fee-line'), feeAmount: $('oa-fee-amount'), feeNote: $('oa-fee-note'),
-      detailsTitle: $('oa-details-title'),
+      detailsTitle: $('oa-details-title'), reqNote: $('oa-req-note'),
       firstName: $('oa-firstName'), lastName: $('oa-lastName'), address: $('oa-address'),
       postalCode: $('oa-postalCode'), city: $('oa-city'), country: $('oa-country'),
       bdLegend: $('oa-bd-legend'), bdDay: $('oa-bdDay'), bdMonth: $('oa-bdMonth'), bdYear: $('oa-bdYear'),
@@ -437,11 +443,12 @@
     el.feeNote.textContent = t.feeNote;
     el.detailsTitle.textContent = t.yourDetails;
     ['firstName', 'lastName', 'address', 'postalCode', 'city', 'email', 'phone'].forEach(function (k) {
-      el[k].setAttribute('placeholder', t[k]);
+      el[k].setAttribute('placeholder', t[k] + ' *');
       el[k].setAttribute('aria-label', t[k]);
     });
+    el.reqNote.textContent = t.requiredNote;
     el.country.setAttribute('aria-label', t.country);
-    el.bdLegend.textContent = t.birthDate;
+    el.bdLegend.textContent = t.birthDate + ' *';
     el.bdDay.setAttribute('placeholder', t.dayPh); el.bdDay.setAttribute('aria-label', t.birthDate + ': ' + t.day);
     el.bdMonth.setAttribute('placeholder', t.monthPh); el.bdMonth.setAttribute('aria-label', t.birthDate + ': ' + t.month);
     el.bdYear.setAttribute('placeholder', t.yearPh); el.bdYear.setAttribute('aria-label', t.birthDate + ': ' + t.year);
@@ -450,7 +457,7 @@
     el.privacyLink.setAttribute('href', CONFIG.privacy);
     el.newsletterSuffix.textContent = t.newsletterSuffix;
     el.mentionText.textContent = t.mentionConsent;
-    el.mentionName.setAttribute('placeholder', t.mentionName);
+    el.mentionName.setAttribute('placeholder', t.mentionName + ' *');
     el.mentionName.setAttribute('aria-label', t.mentionName);
     el.doneTitle.textContent = t.doneTitle;
     el.statutesPrefix.textContent = t.statutesPrefix;

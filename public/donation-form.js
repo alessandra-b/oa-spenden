@@ -90,6 +90,7 @@
       plan: 'Livello',
       changePlan: 'Cambia livello',
       yourDetails: 'I tuoi dati',
+      requiredNote: '* Campi obbligatori',
       firstName: 'Nome',
       lastName: 'Cognome',
       address: 'Indirizzo',
@@ -137,6 +138,7 @@
       plan: 'Tier',
       changePlan: 'Change tier',
       yourDetails: 'Your details',
+      requiredNote: '* Required fields',
       firstName: 'First name',
       lastName: 'Last name',
       address: 'Address',
@@ -184,6 +186,7 @@
       plan: 'Stufe',
       changePlan: 'Stufe ändern',
       yourDetails: 'Ihre Angaben',
+      requiredNote: '* Pflichtfelder',
       firstName: 'Vorname',
       lastName: 'Nachname',
       address: 'Adresse',
@@ -323,6 +326,8 @@
     '.oa-root .oa-preset.oa-selected{background:var(--oa-gold);color:var(--oa-paper)}' +
     '.oa-root .oa-input{display:block;width:100%;height:auto;margin:0;padding:.75rem 1rem;border:1px solid var(--oa-gold);border-radius:8px;' +
     'background:var(--oa-paper);color:var(--oa-ink);font:inherit;font-size:1rem;line-height:1.4;-webkit-appearance:none;appearance:none}' +
+    '.oa-root .oa-req{color:var(--oa-gold)}' +
+    '.oa-root .oa-req-note{margin:-.25rem 0 0}' +
     '.oa-root .oa-input::placeholder{color:var(--oa-ink);opacity:.6}' +
     '.oa-root textarea.oa-input{min-height:6.5rem;resize:vertical}' +
     '.oa-root .oa-mention-name{margin-top:.75rem}' +
@@ -382,6 +387,7 @@
       // 2. Dati
       '<section class="oa-section">' +
         '<h2 class="oa-section-title" id="oa-details-title"></h2>' +
+        '<p class="oa-note oa-req-note" id="oa-req-note"></p>' +
         '<div class="oa-fields">' +
           '<input class="oa-input" id="oa-firstName" name="firstName" type="text" autocomplete="given-name" required>' +
           '<input class="oa-input" id="oa-lastName" name="lastName" type="text" autocomplete="family-name" required>' +
@@ -404,7 +410,7 @@
       '<section class="oa-section">' +
         '<p class="oa-note" id="oa-saferpay"></p>' +
         '<p class="oa-note" id="oa-charges"></p>' +
-        '<label class="oa-check"><input type="checkbox" id="oa-terms"><span><span id="oa-terms-prefix"></span> <a id="oa-terms-link" href="#" target="_blank" rel="noopener noreferrer"></a>.</span></label>' +
+        '<label class="oa-check"><input type="checkbox" id="oa-terms"><span><span id="oa-terms-prefix"></span> <a id="oa-terms-link" href="#" target="_blank" rel="noopener noreferrer"></a>.<span class="oa-req" aria-hidden="true"> *</span></span></label>' +
         '<p class="oa-error oa-hidden" id="oa-error" role="alert"></p>' +
         '<div class="oa-actions"><button type="submit" class="oa-pay" id="oa-pay"></button></div>' +
       '</section>' +
@@ -437,7 +443,7 @@
       detailsTitle: $('oa-details-title'),
       firstName: $('oa-firstName'), lastName: $('oa-lastName'), address: $('oa-address'),
       postalCode: $('oa-postalCode'), city: $('oa-city'), email: $('oa-email'), phone: $('oa-phone'),
-      message: $('oa-message'), mentionWrap: $('oa-mention-wrap'), mention: $('oa-mention'), mentionText: $('oa-mention-text'), mentionName: $('oa-mention-name'),
+      message: $('oa-message'), reqNote: $('oa-req-note'), mentionWrap: $('oa-mention-wrap'), mention: $('oa-mention'), mentionText: $('oa-mention-text'), mentionName: $('oa-mention-name'),
       newsletter: $('oa-newsletter'), newsletterPrefix: $('oa-newsletter-prefix'), privacyLink: $('oa-privacy-link'), newsletterSuffix: $('oa-newsletter-suffix'),
       saferpay: $('oa-saferpay'), charges: $('oa-charges'),
       terms: $('oa-terms'), termsPrefix: $('oa-terms-prefix'), termsLink: $('oa-terms-link'),
@@ -454,13 +460,14 @@
     el.amountTitle.textContent = t.chooseContribution;
     el.detailsTitle.textContent = t.yourDetails;
     detailKeys.forEach(function (k) {
-      el[k].setAttribute('placeholder', t[k]);
+      el[k].setAttribute('placeholder', t[k] + ' *');
       el[k].setAttribute('aria-label', t[k]);
     });
+    el.reqNote.textContent = t.requiredNote;
     el.message.setAttribute('placeholder', t.message);
     el.message.setAttribute('aria-label', t.message);
     el.mentionText.textContent = t.mentionConsent;
-    el.mentionName.setAttribute('placeholder', t.mentionName);
+    el.mentionName.setAttribute('placeholder', t.mentionName + ' *');
     el.mentionName.setAttribute('aria-label', t.mentionName);
     el.newsletterPrefix.textContent = t.newsletterPrefix;
     el.privacyLink.textContent = t.privacyLink;
