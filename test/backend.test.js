@@ -180,7 +180,7 @@ test('membership con database: notifica + ritorno quasi insieme -> un solo incas
     // contenuti
     assert.equal(toMember[0].sender.email, 'info@orchestra-aurea.ch');
     assert.match(toMember[0].subject, /Orchestra Aurea/);
-    assert.match(toMember[0].htmlContent, /Ciao Anna,/);
+    assert.match(toMember[0].htmlContent, /Gentile Anna Muster,/);
     assert.match(toMember[0].htmlContent, /CHF 100\.00/);
     assert.match(toMember[0].htmlContent, /23 aprile 1958/);
     assert.deepEqual(toMember[0].attachment, [{ url: 'https://cdn.example/statuten.pdf', name: 'Statuten-Orchestra-Aurea.pdf' }]);
@@ -284,7 +284,8 @@ test('donazione: livello ricalcolato, email al donatore e a info@, pagina Danke'
     const donor = state.brevo.emails.find((e) => e.tags.includes('oa-donation'));
     const admin = state.brevo.emails.find((e) => e.tags.includes('oa-donation-admin'));
     assert.match(donor.htmlContent, /Guten Tag Bruno Rossi/);
-    assert.match(donor.htmlContent, /Stufe FLOW/);
+    assert.match(donor.htmlContent, /Förderstufe FLOW zugeordnet/);
+    assert.match(donor.htmlContent, /Ihr Orchestra-Aurea-Team/);
     assert.match(donor.htmlContent, /CHF 520\.00/);
     assert.match(admin.subject, /^Neue Spende: CHF 520\.00 \(FLOW\) von Bruno Rossi/);
     assert.equal(state.brevo.emails.length, 2, 'niente newsletter se non richiesta');

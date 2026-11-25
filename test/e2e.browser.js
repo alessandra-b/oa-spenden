@@ -101,7 +101,7 @@ async function fillMember(page, over = {}) {
             const mails = state.brevo.emails.slice(before);
             assert.equal(mails.length, 3);
             const m = mails.find((e) => e.tags.includes('oa-member'));
-            assert.match(m.htmlContent, /Ciao Carla,/);
+            assert.match(m.htmlContent, /Gentile Carla [^,]+,/);
             assert.match(m.htmlContent, /Italia/);
             assert.match(m.htmlContent, /23 aprile 1958/);
             assert.ok(m.attachment && m.attachment[0].url.endsWith('/statuten.pdf'));
@@ -175,7 +175,7 @@ async function fillMember(page, over = {}) {
             assert.equal(await page.isVisible('form'), false);
             const mail = state.brevo.emails[before];
             assert.equal(mail.to[0].email, 'dora@example.ch');
-            assert.match(mail.subject, /Conferma la tua iscrizione/, 'lingua della pagina (it)');
+            assert.match(mail.subject, /Confermi la Sua iscrizione/, 'lingua della pagina (it)');
             // il link di conferma funziona fino in fondo
             const link = mail.htmlContent.match(/href="([^"]*\/api\/newsletter\?t=[^"]+)"/)[1].replace(/&amp;/g, '&')
                 .replace(/^https?:\/\/[^/]+/, base);
